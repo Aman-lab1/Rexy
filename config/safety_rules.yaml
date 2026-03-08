@@ -1,0 +1,22 @@
+# Rexy Safety Rules - HUMAN EDIT ONLY
+allowed_actions:
+  - "send_email"
+  - "search_web" 
+  - "read_file"
+  - "write_note"
+  - "echo"
+  - "time"           
+  - "calc"      
+  - "files" 
+  
+blocked_commands:
+  - "rm -rf"
+  - "sudo"
+  - "pip install"
+  - "del /f"
+  
+permissions:
+  email: true
+  file_access: "C:\\Users\\hp\\OneDrive\\Desktop\\Rexy"
+  api_keys: {}
+

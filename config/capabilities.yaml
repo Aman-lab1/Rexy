@@ -1,0 +1,21 @@
+capabilities:
+  - name: "get_time"
+    description: "Get current time"
+    risk_level: "low"
+    params_schema: {}
+    dry_run: true
+    
+  - name: "echo"
+    description: "Echo message back"
+    risk_level: "low"
+    params_schema: {message: "str"}
+    
+  - name: "list_files"
+    description: "List files in directory"
+    risk_level: "medium"
+    params_schema: {path: "str"}
+    
+  - name: "calculate"
+    description: "Simple calculator"
+    risk_level: "low"
+    params_schema: {expression: "str"}

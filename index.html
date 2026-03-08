@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: linear-gradient(135deg, #f0f4f8 0%, #e8f0f5 100%);
+            height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            overflow: hidden;
+        }
+        
+        #rexy-container { 
+            display: flex; 
+            gap: 40px;
+            padding: 20px;
+            align-items: center;
+        }
+        
+        /* ROBOT CANVAS - LEFT (from your UI code) */
+        #robotCanvas { 
+            border-radius: 25px; 
+            background: rgba(255,255,255,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            width: 400px;
+            height: 500px;
+        }
+        
+        /* GLASS CHAT - RIGHT */
+        #chat-panel {
+            width: 420px;
+            height: 520px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 25px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        #messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .message {
+            margin: 10px 0;
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 85%;
+            word-wrap: break-word;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .user { 
+            background: rgba(255,255,255,0.3); 
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .rexy { 
+            background: rgba(120, 219, 255, 0.3); 
+            border-left: 3px solid #00f5ff;
+        }
+        
+        #input-container {
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05);
+        }
+        /* NEW: Calm typing dots */
+        .thinking {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 12px 16px;
+            margin: 10px 0;
+            background: rgba(120, 219, 255, 0.2);
+            border-left: 3px solid rgba(0, 245, 255, 0.5);
+            border-radius: 18px;
+            color: #000;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+            }
+
+            .thinking:not(.hidden) {
+            opacity: 1;
+            transform: translateY(0);
+            }
+
+            .thinking span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(0, 245, 255, 0.8);
+            animation: thinkingPulse 1.2s infinite ease-in-out;
+            }
+
+            .thinking span:nth-child(2) { animation-delay: 0.15s; }
+            .thinking span:nth-child(3) { animation-delay: 0.3s; }
+
+            @keyframes thinkingPulse {
+            0%, 100% { transform: translateY(0); opacity: 0.4; }
+            50% { transform: translateY(-3px); opacity: 1; }
+            }
+
+        #input-container input, #input-container button {
+            color: #000 !important; /* BLACK FONT */
+        }
+
+        #message-input {
+            width: 100%;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255,255,255,0.3); /* LIGHTER BG */
+            color: #000 !important; /* BLACK TEXT */
+            font-size: 16px;
+            outline: none;
+            backdrop-filter: blur(10px);
+            /* 3D SHADING */
+            border: 2px solid rgba(255,255,255,0.4);
+            box-shadow: 
+                0 4px 12px rgba(0,0,0,0.15),  /* Outer shadow */
+                inset 0 2px 4px rgba(255,255,255,0.6),  /* Inner highlight */
+                inset 0 -2px 4px rgba(0,0,0,0.1);       /* Inner shadow */
+        }
+
+        #message-input::placeholder {
+            color: rgba(0,0,0,0.5) !important; /* BLACK PLACEHOLDER */
+        }
+
+        #message-input:focus {
+            background: rgba(255,255,255,0.5);
+            box-shadow: 
+                0 0 25px rgba(0,245,255,0.4),
+                0 4px 12px rgba(0,0,0,0.2),
+                inset 0 2px 4px rgba(255,255,255,0.8);
+            border-color: #00f5ff;
+        }
+
+        .primary-btn, .sparkle-btn {
+            color: #000 !important; /* BLACK BUTTON TEXT */
+            border: 2px solid rgba(255,255,255,0.4) !important;
+            box-shadow: 
+                0 4px 12px rgba(0,0,0,0.15),
+                inset 0 2px 4px rgba(255,255,255,0.6),
+                inset 0 -2px 4px rgba(0,0,0,0.1);
+        }
+        
+        /* EMOTION CONTROLS */
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        
+        button {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #ccc;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #555;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        button:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        button.active {
+            background: linear-gradient(135deg, #4ab8ff 0%, #3a9eff 100%);
+            color: white;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="rexy-container">
+        <!-- YOUR EXACT ROBOT CODE - LEFT -->
+        <canvas id="robotCanvas" width="400" height="500"></canvas>
+        
+        <!-- GLASS CHAT - RIGHT (WebSocket + Gemini) -->
+        <div id="chat-panel">
+            <div id="messages"></div>
+            <div id="thinking-indicator" class="thinking hidden">
+                Rexy is thinking<span></span><span></span><span></span>
+            </div>
+            <div id="input-container">
+                <div class="input-group" style="display: flex; gap: 8px; padding: 6px;">
+                    <input id="message-input" placeholder="Talk to Rexy..." style="flex: 1; border: none; outline: none; padding: 12px; border-radius: 20px; background: rgba(255,255,255,0.2); color: white;" />
+                    <button class="primary-btn" onclick="handleChat()" style="background: linear-gradient(135deg, #4ab8ff 0%, #3a9eff 100%); color: white; border: none; padding: 12px 16px; border-radius: 20px; cursor: pointer; font-weight: bold;">Ask</button>
+                    <button class="sparkle-btn" onclick="inspireMe()" style="background: rgba(255,255,255,0.8); color: #3a9eff; border: 1px solid rgba(255,255,255,0.3); padding: 12px 12px; border-radius: 20px; cursor: pointer;">✨</button>
+                </div>
+            </div>
+        </div>
+
+    <!-- EMOTION CONTROLS -->
+    <div class="controls">
+        <button onclick="setMood('neutral')" id="neutral-btn">Neutral</button>
+        <button onclick="setMood('happy')" id="happy-btn">Happy</button>
+        <button onclick="setMood('thinking')" id="thinking-btn">Thinking</button>
+        <button onclick="setMood('sad')" id="sad-btn">Sad</button>
+    </div>
+
+    <script>
+        /**
+         * YOUR EXACT ROBOT CODE (100% preserved)
+         */
+        const apiKey = ""; // Your Gemini API key
+        const canvas = document.getElementById('robotCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Robot State (exactly from your code)
+        const robot = {
+            x: 0,
+            y: 0,
+            baseY: 0,
+            floatOffset: 0,
+            time: 0,
+            eyes: {
+                left: { x: -35, y: -10, targetX: -35, targetY: -10 },
+                right: { x: 35, y: -10, targetX: 35, targetY: -10 },
+                blinkOpen: 1,
+                nextBlinkTime: 0,
+                width: 15,
+                height: 22
+            },
+            mood: 'neutral'
+        };
+
+        // === YOUR CHAT BUBBLE + GEMINI ===
+
+        async function handleChat() {
+            const input = document.getElementById('message-input'); // was userHelperInput
+            const text = input.value.trim();
+            if (!text) return;
+
+            // Show in chat and send to Rexy WS
+            addMessage('user', text);
+            setThinking(true);  // NEW
+            ws.send(JSON.stringify({ message: text }));
+            input.value = '';
+        }
+
+
+        function inspireMe() {
+            // ✨ FEATURE COMING SOON - Rexy inspiration mode
+            addMessage('rexy', '✨ Inspiration mode coming soon!');
+            setMood('happy');
+        }
+
+        // === YOUR WEBSOCKET + CHAT HISTORY ===
+        const messages = document.getElementById('messages');
+        const input = document.getElementById('message-input');
+        const ws = new WebSocket('ws://localhost:8000/ws');
+        ws.onopen = () => console.log('✅ Connected to Rexy!');
+        
+        let isThinking = false;
+        const thinkingEl = document.getElementById('thinking-indicator');
+
+        // NEW: Macro-Presence state machine
+        let uiState = 'idle';  // idle | listening | thinking | responding
+        let stateTime = 0;     // For organic idle variation
+        let prevState = 'idle';
+        let stateTransition = 0;
+
+        const STATES = {
+            idle: { floatAmp: 12, floatSpeed: 0.3, eyeDrift: 8, glowRadius: 25, shadowBlur: 20 },
+            listening: { floatAmp: 5, floatSpeed: 0.2, eyeDrift: 2, glowRadius: 18, shadowBlur: 12 },
+            thinking: { floatAmp: 2, floatSpeed: 0.1, eyeDrift: 0, glowRadius: 22, shadowBlur: 15 },
+            responding: { floatAmp: 8, floatSpeed: 0.8, eyeDrift: 3, glowRadius: 28, shadowBlur: 18 }
+        };
+
+        function setThinking(active) {
+            isThinking = active;
+            if (active) {
+                thinkingEl.classList.remove('hidden');
+            } else {
+                thinkingEl.classList.add('hidden');
+            }
+        }
+
+        let messageCooldown = 0;
+        ws.onmessage = (event) => {
+            const now = Date.now();
+            if (now - messageCooldown < 200) return;
+            messageCooldown = now;
+            const data = JSON.parse(event.data);
+            
+            if (data.reply !== undefined) {
+                setThinking(false);
+                uiState = 'responding';
+                stateTime = 0;
+                robot.baseY -= 8;
+                setTimeout(() => robot.baseY += 8, 300);
+            }
+
+            addMessage('rexy', data.reply);
+            if (data.emotion) setMood(data.emotion);
+        };
+
+
+        function addMessage(sender, text) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${sender}`;
+            msgDiv.textContent = text;
+            messages.appendChild(msgDiv);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleChat();
+        });
+        input.addEventListener('focus', () => {
+            uiState = 'listening';
+            robot.eyes.left.targetX = 5;  
+            robot.eyes.right.targetX = 25;
+        });
+        input.addEventListener('blur', () => {
+            if (!isThinking) uiState = 'idle';
+        });
+        input.addEventListener('input', () => {
+            if (document.activeElement === input) uiState = 'listening';
+        });
+
+        // === YOUR EMOTION CONTROLS ===
+        function setMood(m) {
+            robot.mood = m;
+            document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`${m}-btn`).classList.add('active');
+            
+            if (m === 'sad') {
+                robot.eyes.left.targetY = 0;
+                robot.eyes.right.targetY = 0;
+            } else if (m === 'thinking') {
+                robot.eyes.left.targetY = -15;
+                robot.eyes.right.targetY = -15;
+            } else {
+                robot.eyes.left.targetY = -10;
+                robot.eyes.right.targetY = -10;
+            }
+        }
+
+        // === YOUR EXACT ROBOT DRAWING CODE ===
+        const FLOAT_SPEED = 0.03;
+        const FLOAT_AMPLITUDE = 15;
+        const EYE_DRIFT_SPEED = 0.025;
+
+        const COLOR_PALETTE = {
+            bodyLight: '#ffffff',
+            bodyMid: '#f0f5fa',
+            bodyShadow: '#dbe4eb',
+            visorDark: '#181b26',
+            visorLight: '#2a3040',
+            eyeGlow: 'rgba(0, 245, 255, 0.5)', 
+            eyeCore: '#00f5ff'
+        };
+
+        function resize() {
+            canvas.width = 400;
+            canvas.height = 500;
+            robot.x = canvas.width / 2;
+            robot.baseY = canvas.height / 2;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function easeInOutSine(x) {
+            return -(Math.cos(Math.PI * x) - 1) / 2;
+        }
+
+        function drawRoundedRect(ctx, x, y, w, h, r) {
+            if (w < 2 * r) r = w / 2;
+            if (h < 2 * r) r = h / 2;
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+
+        // YOUR EXACT DRAWING FUNCTIONS
+        function drawShadow() {
+            const floatPhase = Math.sin(robot.time);
+            const baseWidth = 110;
+            const shadowFactor = (floatPhase + 1) / 2;
+            const currentWidth = baseWidth + (shadowFactor * 25);
+            const currentBlur = 15 + (shadowFactor * 15);
+            const currentAlpha = 0.15 - (shadowFactor * 0.05);
+            const shadowY = robot.baseY + 140;
+            const state = STATES[uiState];
+            ctx.shadowBlur = state.shadowBlur + Math.sin(stateTime * 0.2) * 3;
+
+            ctx.save();
+            ctx.translate(robot.x, shadowY);
+            ctx.scale(1, 0.3);
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, currentWidth);
+            gradient.addColorStop(0, `rgba(0, 40, 80, ${currentAlpha})`);
+            gradient.addColorStop(0.5, `rgba(0, 40, 80, ${currentAlpha * 0.5})`);
+            gradient.addColorStop(1, `rgba(0, 40, 80, 0)`);
+            ctx.fillStyle = gradient;
+            ctx.shadowBlur = currentBlur;
+            ctx.shadowColor = "rgba(0,0,0,0.1)";
+            ctx.beginPath();
+            ctx.arc(0, 0, currentWidth, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawArms() {
+            const bodyY = robot.y + 55;
+            ctx.save();
+            ctx.translate(robot.x, bodyY);
+            const armGrad = ctx.createLinearGradient(0, -20, 0, 40);
+            armGrad.addColorStop(0, COLOR_PALETTE.bodyLight);
+            armGrad.addColorStop(1, COLOR_PALETTE.bodyShadow);
+            ctx.fillStyle = armGrad;
+            drawSingleArm(-1);
+            drawSingleArm(1);
+            ctx.restore();
+        }
+
+        function drawSingleArm(side) {
+            const startX = 35 * side;
+            const startY = -15;
+            const endX = 65 * side;
+            const endY = 25;
+            const shoulderWidth = 18;
+            const wristWidth = 10;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY - shoulderWidth/2);
+            ctx.lineTo(endX, endY - wristWidth/2);
+            ctx.arc(endX, endY, 8, -Math.PI/2, Math.PI/2, false);
+            ctx.arc(endX, endY, 8, Math.PI/2, -Math.PI/2, false);
+            ctx.lineTo(endX, endY + wristWidth/2);
+            ctx.lineTo(startX, startY + shoulderWidth/2);
+            ctx.fill();
+            ctx.shadowColor = "rgba(0,0,0,0.05)";
+            ctx.shadowBlur = 4;
+            ctx.stroke();
+            ctx.shadowColor = "transparent";
+        }
+
+        function drawBody() {
+            const bodyY = robot.y + 55;
+            ctx.save();
+            ctx.translate(robot.x, bodyY);
+            const gradient = ctx.createRadialGradient(-30, -40, 10, 0, 0, 80);
+            gradient.addColorStop(0, '#ffffff');
+            gradient.addColorStop(0.3, COLOR_PALETTE.bodyMid);
+            gradient.addColorStop(1, COLOR_PALETTE.bodyShadow);
+            ctx.fillStyle = gradient;
+            const w = 84, h = 55;
+            ctx.beginPath();
+            ctx.moveTo(-w + 10, -20);
+            ctx.bezierCurveTo(-w, 0, -w + 5, h, -30, h + 10);
+            ctx.quadraticCurveTo(0, h + 15, 30, h + 10);
+            ctx.bezierCurveTo(w - 5, h, w, 0, w - 10, -20);
+            ctx.fill();
+            ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+            ctx.shadowBlur = 5;
+            ctx.shadowOffsetY = 1;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawHead() {
+            ctx.save();
+            ctx.translate(robot.x, robot.y);
+            ctx.shadowColor = "rgba(160, 170, 190, 0.2)";
+            ctx.shadowBlur = 30;
+            ctx.shadowOffsetY = 15;
+            const headGrad = ctx.createRadialGradient(-50, -50, 10, 0, 0, 120);
+            headGrad.addColorStop(0, '#ffffff');
+            headGrad.addColorStop(0.4, COLOR_PALETTE.bodyMid);
+            headGrad.addColorStop(1, COLOR_PALETTE.bodyShadow);
+            ctx.fillStyle = headGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, 105, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowColor = "transparent";
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetY = 0;
+            const highlightGrad = ctx.createRadialGradient(0, -65, 0, 0, -65, 55);
+            highlightGrad.addColorStop(0, "rgba(255, 255, 255, 0.8)");
+            highlightGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+            ctx.fillStyle = highlightGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, -50, 65, 30, 0, 0, Math.PI * 2);
+            ctx.fill();
+            drawVisor();
+            ctx.restore();
+        }
+
+        function drawVisor() {
+            const visorW = 160, visorH = 100, visorY = 10;
+            ctx.save();
+            ctx.beginPath();
+            drawRoundedRect(ctx, -visorW/2, visorY - visorH/2, visorW, visorH, 45);
+            const visorGrad = ctx.createLinearGradient(0, visorY - visorH/2, 0, visorY + visorH/2);
+            visorGrad.addColorStop(0, COLOR_PALETTE.visorDark);
+            visorGrad.addColorStop(1, '#050510');
+            ctx.fillStyle = visorGrad;
+            ctx.fill();
+            ctx.clip();
+            
+            // ✅ State glow (your code preserved)
+            ctx.shadowBlur = STATES[uiState].glowRadius + Math.sin(stateTime * 0.4) * 3;
+            ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+            ctx.shadowBlur = 25;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 5;
+            ctx.beginPath();
+            ctx.rect(-visorW/2 - 20, visorY - visorH/2 - 20, visorW + 40, visorH + 40);
+            ctx.stroke();
+            ctx.shadowColor = "transparent";
+            
+            const glassReflect = ctx.createLinearGradient(0, visorY - visorH/2, 0, visorY);
+            glassReflect.addColorStop(0, "rgba(255,255,255,0.08)");
+            glassReflect.addColorStop(1, "rgba(255,255,255,0)");
+            ctx.fillStyle = glassReflect;
+            ctx.beginPath();
+            ctx.ellipse(0, visorY - visorH/2 + 10, visorW/2 - 10, 20, 0, Math.PI, 0);
+            ctx.fill();
+            
+            // ✅ CRITICAL: Eye separation clamp BEFORE drawEyes()
+            const MIN_SEP = 32;  // Permanent fix
+            robot.eyes.left.targetX = Math.max(-48, Math.min(-16, robot.eyes.left.targetX));
+            robot.eyes.right.targetX = Math.max(16, Math.min(48, robot.eyes.right.targetX));
+            
+            drawEyes();
+            ctx.restore();
+        }
+
+        function drawEyes() {
+            // 🔥 PERMANENT HARD SEPARATION (before ANY drift)
+            const HARD_LEFT_MAX = -42;
+            const HARD_RIGHT_MIN = 42;
+            const HARD_SEP_MIN = 75;  // Total minimum separation
+            
+            // Clamp targets HARD
+            robot.eyes.left.targetX = Math.max(HARD_LEFT_MAX, Math.min(-20, robot.eyes.left.targetX));
+            robot.eyes.right.targetX = Math.max(20, Math.min(HARD_RIGHT_MIN, robot.eyes.right.targetX));
+            
+            // Enforce minimum separation
+            const currentSep = robot.eyes.right.targetX - robot.eyes.left.targetX;
+            if (currentSep < HARD_SEP_MIN) {
+                const adjust = (HARD_SEP_MIN - currentSep) / 2;
+                robot.eyes.left.targetX -= adjust;
+                robot.eyes.right.targetX += adjust;
+            }
+            
+            // Your existing smooth drift
+            robot.eyes.left.x += (robot.eyes.left.targetX - robot.eyes.left.x) * 0.025;
+            robot.eyes.left.y += (robot.eyes.left.targetY - robot.eyes.left.y) * 0.025;
+            robot.eyes.right.x += (robot.eyes.right.targetX - robot.eyes.right.x) * 0.025;
+            robot.eyes.right.y += (robot.eyes.right.targetY - robot.eyes.right.y) * 0.025;
+            
+            // Rest of your code EXACTLY preserved
+            let eyeHeight = robot.eyes.height * robot.eyes.blinkOpen;
+            let eyeWidth = robot.eyes.width;
+            let eyeColor = COLOR_PALETTE.eyeCore;
+            let glowColor = COLOR_PALETTE.eyeGlow;
+            
+            if (robot.mood === 'sad') eyeHeight *= 0.8;
+            else if (robot.mood === 'thinking') eyeWidth *= 0.9;
+            
+            const pulse = 1 + Math.sin(robot.time * 4) * 0.05;
+            drawSingleEye(robot.eyes.left.x, robot.eyes.left.y, eyeWidth * pulse, eyeHeight, glowColor, eyeColor);
+            drawSingleEye(robot.eyes.right.x, robot.eyes.right.y, eyeWidth * pulse, eyeHeight, glowColor, eyeColor);
+        }
+
+
+        function drawSingleEye(x, y, w, h, glow, core) {
+                ctx.save();
+                ctx.translate(x, y + 10);
+                ctx.shadowColor = glow;
+                ctx.shadowBlur = STATES[uiState].glowRadius + Math.sin(stateTime * 0.4) * 3;
+                ctx.fillStyle = core;
+                
+                if (robot.mood === 'happy') {
+                    // ✅ PERMANENT FIX: Position-aware arc separation
+                    const sepOffset = x > 0 ? -3 : 3;  // Right eye left, left eye right
+                    ctx.beginPath();
+                    ctx.arc(sepOffset, 0, w * 0.9, Math.PI, 0);
+                    ctx.lineWidth = 4;
+                    ctx.strokeStyle = core;
+                    ctx.stroke();
+                } else {
+                    // Your existing normal eyes (100% preserved)
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, w, h, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = "rgba(255,255,255,0.8)";
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, w * 0.4, h * 0.4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            function update() {
+                robot.time += 0.05;
+                stateTime += 0.05;
+                
+                // 🔥 SMOOTH BLEND (safe version)
+                const state = STATES[uiState];
+                stateTransition = Math.min(1, stateTransition + 0.015);
+                const blend = easeInOutSine(stateTransition);
+                
+                // Gentle float blending
+                const floatAmp = 15 - (10 * blend * (isThinking || uiState === 'listening'));
+                const organicFloat = Math.sin(robot.time * 0.4 + stateTime * 0.2) * floatAmp;
+                const breathingScale = 1 + Math.sin(stateTime * 0.3) * 0.015;
+                
+                robot.floatOffset = organicFloat * breathingScale;
+                robot.y = robot.baseY + robot.floatOffset;
+                
+            // NEW: State eyes (your code)
+            if (uiState === 'idle') {
+                if (Math.random() < 0.005) {
+                    // FIXED: Opposite drift + smaller range
+                    robot.eyes.left.targetX = -(Math.random() * state.eyeDrift);    // LEFT only
+                    robot.eyes.right.targetX = (Math.random() * state.eyeDrift);    // RIGHT only
+                }
+            } else if (uiState === 'thinking') {
+                robot.eyes.left.targetY = -20 + Math.sin(stateTime) * 5;
+                robot.eyes.right.targetY = -20 + Math.sin(stateTime) * 5;
+            }
+            
+            // State sync
+            if (isThinking) uiState = 'thinking';
+            if (uiState === 'responding' && stateTime > 1.5) uiState = 'idle';
+            
+            // ALL YOUR EXISTING LOGIC (preserved exactly)
+            const bubbleEl = document.getElementById('chatBubble');
+            if (bubbleEl) {
+                bubbleEl.style.left = `${robot.x + 65}px`;
+                bubbleEl.style.top = `${robot.y - 120}px`;
+            }
+            if (Math.random() < 0.01) {
+                const rangeX = 5, rangeY = 3, baseX = 35;
+                const gazeX = (Math.random() - 0.5) * rangeX * 2;
+                const gazeY = (Math.random() - 0.5) * rangeY * 2;
+                robot.eyes.left.targetX = -baseX + gazeX;
+                robot.eyes.left.targetY = -10 + gazeY;
+                robot.eyes.right.targetX = baseX + gazeX;
+                robot.eyes.right.targetY = -10 + gazeY;
+            }
+            const now = Date.now();
+            if (now > robot.eyes.nextBlinkTime) {
+                robot.eyes.blinkOpen -= 0.15;
+                if (robot.eyes.blinkOpen <= 0) {
+                    robot.eyes.blinkOpen = 0;
+                    setTimeout(openEyes, 100);
+                    robot.eyes.nextBlinkTime = now + 2000 + Math.random() * 4000;
+                }
+            }
+        }
+
+        function openEyes() {
+            const openInterval = setInterval(() => {
+                robot.eyes.blinkOpen += 0.15;
+                if (robot.eyes.blinkOpen >= 1) {
+                    robot.eyes.blinkOpen = 1;
+                    clearInterval(openInterval);
+                }
+            }, 16);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            update();
+            drawShadow();
+            drawArms();
+            drawBody();
+            drawHead();
+            requestAnimationFrame(draw);
+        }
+
+        // Mouse interaction (your exact code)
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const dx = (mouseX - canvas.width/2) / (canvas.width/2);
+            const dy = (mouseY - canvas.height/2) / (canvas.height/2);
+            const influence = 10;
+            const baseLeftX = -35, baseRightX = 35, baseY = -10;
+            robot.eyes.left.targetX = baseLeftX + (dx * influence);
+            robot.eyes.left.targetY = baseY + (dy * influence);
+            robot.eyes.right.targetX = baseRightX + (dx * influence);
+            robot.eyes.right.targetY = baseY + (dy * influence);
+        });
+
+        // === START EVERYTHING ===
+        setMood('neutral');
+        draw();
+
+        // Add missing chat bubble div
+
+    </script>
+</body>
+</html>
