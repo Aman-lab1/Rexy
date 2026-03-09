@@ -6,3 +6,19 @@ identity.json
 memories.json
 rexy_inbox/
 logs/
+.env
+*.wav
+*.log
+*.db
+*.csv
+rexy_state.json
+identity.json
+memories.json
+memory.py
+memory_skeleton.py
+permissions_ui.py
+voice_demo.py
+observer_to_csv.py
+Line Follower*
+__pycache__/
+tts/
