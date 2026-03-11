@@ -347,6 +347,10 @@ STRICT RULES:
         # ── PRE-CHECK 9: Explicit memory phrases ──
         if re.search(r'\b(remember that|remind me|don\'t forget|what do you remember|forget about)\b', message_lower):
             return {"intent": "MEMORY", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH"}
+        
+        # ── PRE-CHECK 10: State/mode commands → CHAT (not MEMORY) ──
+        if re.search(r'\b(go to|switch to|set|enter)\b.{0,20}\b(state|mode)\b', message_lower):
+            return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH"}
 
         # ── LLM DETECTION (Ollama) ──
         # Only runs if no pre-check matched above

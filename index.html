@@ -7,510 +7,405 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;500&family=Nunito:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-/* ── Reset ── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
 :root {
-  --bg:         #060608;
-  --cyan:       #00e5ff;
-  --cyan-dim:   #0099bb;
-  --cyan-glow:  rgba(0, 229, 255, 0.12);
-  --cyan-soft:  rgba(0, 229, 255, 0.06);
-  --violet:     #6d28d9;
-  --violet-dim: rgba(109, 40, 217, 0.3);
-  --white:      #f0f0f8;
-  --dim:        #4a4a6a;
-  --dim2:       #2a2a3e;
-  --surface:    rgba(12, 12, 20, 0.85);
-  --border:     rgba(255, 255, 255, 0.06);
-  --border2:    rgba(0, 229, 255, 0.1);
-  --green:      #10b981;
-  --rexy-bg:    rgba(0, 229, 255, 0.04);
-  --user-bg:    rgba(109, 40, 217, 0.18);
+  --bg:          #0f0c1e;
+  --surface:     rgba(20,16,45,0.85);
+  --border:      rgba(255,255,255,0.07);
+  --border2:     rgba(167,139,250,0.18);
+  --cyan:        #c4b5fd;
+  --cyan-dim:    #7c3aed;
+  --cyan-glow:   rgba(167,139,250,0.14);
+  --cyan-soft:   rgba(167,139,250,0.07);
+  --cyan-mid:    rgba(167,139,250,0.55);
+  --cyan-25:     rgba(167,139,250,0.22);
+  --violet:      #7c3aed;
+  --violet-dim:  rgba(124,58,237,0.18);
+  --white:       #ede9fe;
+  --dim:         #6b5fa0;
+  --dim2:        #2d2550;
+  --green:       #a3e635;
+  --error:       rgba(255,90,80,0.12);
+  --rexy-bg:     rgba(167,139,250,0.05);
+  --user-bg:     rgba(124,58,237,0.18);
+  --bubble:      #1e1a38;
+  --card-bg:     #18143a;
 }
+html,body { width:100%; height:100%; min-height:100vh; background:var(--bg);
+  background-image:radial-gradient(ellipse at 40% 20%,#1a1535 0%,#0f0c1e 55%,#0a081a 100%);
+  font-family:'Nunito',sans-serif; overflow:hidden; color:var(--white); }
+#particle-canvas { position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.5; }
+#app { position:relative; width:100vw; height:100vh;
+  display:grid; grid-template-rows:52px 1fr auto auto; z-index:1; }
 
-html, body {
-  width: 100%; height: 100%; min-height: 100vh;
-  background: var(--bg);
-  font-family: 'Nunito', sans-serif;
-  overflow: hidden;
-  cursor: default;
-}
-
-/* ── Deep space background ── */
-#bg-canvas {
-  position: fixed; inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* ── Ambient radial behind robot ── */
-#ambient {
-  position: fixed;
-  top: 20%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 600px;
-  height: 600px;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center,
-    rgba(0, 229, 255, 0.04) 0%,
-    rgba(0, 100, 150, 0.03) 40%,
-    transparent 70%
-  );
-  pointer-events: none;
-  z-index: 0;
-  animation: ambient-breathe 4s ease-in-out infinite;
-}
-
-@keyframes ambient-breathe {
-  0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
-  50%       { opacity: 1;   transform: translateX(-50%) scale(1.08); }
-}
-
-/* ── App layout ── */
-#app {
-  position: relative;
-  width: 100vw; height: 100vh;
-  display: grid;
-  grid-template-rows: 52px 1fr auto auto;
-  z-index: 1;
-}
-
-/* ── Topbar ── */
-#topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 32px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(6, 6, 8, 0.7);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-}
-
-#logo {
-  font-family: 'Orbitron', sans-serif;
-  font-weight: 900;
-  font-size: 16px;
-  letter-spacing: 6px;
-  color: var(--cyan);
-  text-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
-  animation: logo-glow 3s ease-in-out infinite;
-}
-
+/* TOPBAR */
+#topbar { display:flex; align-items:center; justify-content:space-between;
+  padding:0 32px; border-bottom:1px solid var(--border);
+  background:rgba(12,9,30,0.75); backdrop-filter:blur(24px); }
+#logo { font-family:'Nunito',sans-serif; font-weight:800; font-size:20px;
+  letter-spacing:4px; color:var(--cyan); text-shadow:0 0 18px rgba(167,139,250,0.5);
+  animation:logo-glow 3s ease-in-out infinite; }
 @keyframes logo-glow {
-  0%, 100% { text-shadow: 0 0 20px rgba(0,229,255,0.4); }
-  50%       { text-shadow: 0 0 35px rgba(0,229,255,0.7), 0 0 60px rgba(0,229,255,0.2); }
+  0%,100%{text-shadow:0 0 20px rgba(71,227,255,0.4);}
+  50%{text-shadow:0 0 35px rgba(71,227,255,0.7),0 0 60px rgba(71,227,255,0.2);} }
+#topbar-center{display:flex;align-items:center;gap:8px;}
+#status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 8px var(--green);animation:status-pulse 2s infinite;}
+@keyframes status-pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+#status-text{font-family:'Nunito',sans-serif;font-size:11px;color:var(--dim);letter-spacing:.5px;font-weight:500;}
+#plugin-badge{font-family:'Nunito',sans-serif;font-size:10px;font-weight:600;letter-spacing:.5px;
+  color:var(--cyan);padding:3px 10px;border:1px solid var(--border2);border-radius:20px;
+  background:var(--cyan-soft);opacity:0;transform:translateY(-6px) scale(0.95);
+  transition:opacity .3s cubic-bezier(.34,1.56,.64,1),transform .3s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:none;}
+#plugin-badge.visible{opacity:1;transform:translateY(0) scale(1);}
+#shortcut-hint{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;
+  font-size:9px;color:var(--dim2);}
+#shortcut-hint kbd{background:var(--dim2);border:1px solid rgba(255,255,255,0.08);
+  border-radius:3px;padding:1px 5px;font-size:9px;color:var(--dim);font-family:'JetBrains Mono',monospace;}
+
+/* ROBOT STAGE */
+#robot-stage-wrap{display:flex;justify-content:center;align-items:flex-end;
+  position:relative;overflow:hidden;padding-bottom:10px;
+  min-height:240px;
+  background:radial-gradient(ellipse at 50% 60%,rgba(60,40,120,0.22) 0%,transparent 70%);}
+#floor-glow{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  width:260px;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(167,139,250,0.55),transparent);
+  box-shadow:0 0 40px 20px rgba(124,58,237,0.18),0 0 80px 30px rgba(124,58,237,0.08);}
+.rexy-stage{position:relative;width:320px;height:320px;display:flex;
+  justify-content:center;align-items:center;perspective:600px;flex-shrink:0;}
+.rexy-stage::before{content:'';position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(circle,var(--cyan-glow) 0%,transparent 68%);
+  filter:blur(24px);pointer-events:none;z-index:0;
+  transition:background 1s ease,opacity 1s ease;}
+.rexy-stage.rexy-thinking::before{background:radial-gradient(circle,rgba(167,139,250,0.20) 0%,transparent 68%);}
+.rexy-stage.rexy-speaking::before{animation:haloSpeak 1.6s ease-in-out infinite alternate;}
+.rexy-stage.rexy-happy::before{background:radial-gradient(circle,rgba(167,139,250,0.18) 0%,transparent 68%);animation:haloSpeak .9s ease-in-out infinite alternate;}
+.rexy-stage.rexy-sad::before{background:radial-gradient(circle,rgba(60,100,255,0.07) 0%,transparent 68%);}
+.rexy-stage.rexy-error::before{background:radial-gradient(circle,var(--error) 0%,transparent 68%);}
+@keyframes haloSpeak{
+  from{background:radial-gradient(circle,rgba(167,139,250,0.08) 0%,transparent 68%);}
+  to{background:radial-gradient(circle,rgba(167,139,250,0.20) 0%,transparent 68%);}}
+
+/* KEYFRAMES */
+@keyframes float{0%{transform:translateY(0px);}45%{transform:translateY(-11px);}55%{transform:translateY(-11px);}100%{transform:translateY(0px);}}
+@keyframes shadowPulse{0%,100%{transform:scaleX(1);opacity:.30;}50%{transform:scaleX(.65);opacity:.12;}}
+@keyframes breathe{0%,100%{transform:scale(1.00);}50%{transform:scale(1.03);}}
+@keyframes blink{0%,88%,100%{transform:scaleY(1);}92%{transform:scaleY(0.06);}}
+@keyframes thinkingDot{0%,60%,100%{transform:translateY(0);opacity:.35;}30%{transform:translateY(-5px);opacity:1.0;}}
+@keyframes speakScale{0%,100%{transform:scale(1.00);}50%{transform:scale(1.10);}}
+@keyframes happyBounce{from{transform:translateY(1px) scaleX(1.00);}to{transform:translateY(-1px) scaleX(1.06);}}
+@keyframes sadShimmer{0%,100%{opacity:.85;}50%{opacity:1.00;}}
+@keyframes tearFall{0%{height:0;opacity:0;}15%{height:6px;opacity:.9;}70%{height:22px;opacity:.5;}100%{height:26px;opacity:0;}}
+@keyframes errorFlicker{0%,100%{opacity:.9;}30%{opacity:.3;}65%{opacity:.8;}}
+@keyframes mouthSpeak{from{width:22px;opacity:.7;}to{width:34px;opacity:1.0;}}
+
+/* ROBOT */
+.robot{position:absolute;display:flex;flex-direction:column;align-items:center;
+  width:220px;z-index:1;animation:float 4.2s cubic-bezier(.45,.05,.55,.95) infinite;
+  transition:transform .12s ease-out;will-change:transform;transform-style:preserve-3d;}
+.antenna{display:flex;flex-direction:column;align-items:center;margin-bottom:-2px;z-index:2;}
+.antenna-ball{width:11px;height:11px;border-radius:50%;
+  background:radial-gradient(circle at 34% 30%,#ffffff 0%,#ede9fe 45%,#7c3aed 100%);
+  box-shadow:0 2px 6px rgba(0,0,0,.45),inset 0 1px 2px rgba(255,255,255,.6),0 0 12px rgba(124,58,237,.6);}
+.antenna-rod{width:4px;height:26px;border-radius:2px;
+  background:linear-gradient(to right,#7c3aed,#ede9fe,#ffffff,#ede9fe,#7c3aed);
+  box-shadow:0 2px 8px rgba(0,0,0,.40);}
+
+/* HEAD */
+.head{position:relative;width:164px;height:118px;border-radius:38px;
+  background:linear-gradient(180deg,#ffffff 0%,#f5f3ff 15%,#ede9fe 35%,#7c6cbf 68%,#4c3d99 100%);
+  box-shadow:inset 0 8px 14px rgba(255,255,255,.90),inset 0 -14px 22px rgba(60,30,160,.55),
+    0 14px 32px rgba(0,0,0,.50),0 0 30px rgba(124,58,237,.25),
+    inset 0 2px 6px rgba(255,255,255,.80),inset 0 -4px 8px rgba(80,50,200,.40);
+  display:flex;justify-content:center;align-items:center;z-index:1;}
+.head::after{content:'';position:absolute;top:9px;left:18%;width:64%;height:10px;
+  border-radius:50%;background:rgba(255,255,255,.75);filter:blur(4px);pointer-events:none;}
+
+/* VISOR */
+.visor{width:118px;height:70px;border-radius:16px;
+  background:linear-gradient(180deg,#2e3336 0%,#1a1e20 55%,#131517 100%);
+  box-shadow:inset 0 3px 7px rgba(255,255,255,.12),inset 0 -5px 10px rgba(0,0,0,.55),
+    0 4px 16px rgba(0,0,0,.60),inset 0 1px 0 rgba(255,255,255,.08),0 0 14px rgba(71,227,255,.07);
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  gap:7px;overflow:hidden;position:relative;}
+.visor::before{content:'';position:absolute;top:6px;left:12px;right:12px;height:7px;
+  border-radius:50%;background:rgba(255,255,255,.08);filter:blur(2px);pointer-events:none;}
+.eye-row{display:flex;align-items:center;justify-content:center;gap:20px;position:relative;}
+.mouth-row{display:flex;align-items:center;justify-content:center;height:14px;}
+
+/* BASE EYE */
+.eye{width:22px;height:22px;border-radius:50%;
+  background:radial-gradient(ellipse at 38% 35%,#d6f8ff 0%,#47e3ff 40%,#18b8d2 100%);
+  box-shadow:0 0 6px var(--cyan),0 0 16px var(--cyan-mid),0 0 32px var(--cyan-25);
+  position:relative;flex-shrink:0;transition:box-shadow .4s ease,opacity .3s ease;}
+.eye::after{content:'';position:absolute;top:14%;left:16%;width:7px;height:7px;
+  border-radius:50%;background:rgba(255,255,255,.85);filter:blur(1px);}
+.mouth{transition:all .3s ease;}
+
+/* EXPRESSION STATES */
+/* IDLE */
+.rexy-idle .eye{width:22px;height:22px;border-radius:50%;animation:blink 6.5s ease-in-out infinite;}
+.rexy-idle .eye:last-child{animation-delay:.1s;}
+.rexy-idle .mouth{width:28px;height:10px;border-radius:0 0 20px 20px;
+  border:2px solid var(--cyan);border-top:none;box-shadow:0 0 8px rgba(71,227,255,.4);}
+.rexy-idle.robot{animation:float 4.2s cubic-bezier(.45,.05,.55,.95) infinite;}
+
+/* THINKING — 3 bouncing dots */
+.rexy-thinking .eye-row{gap:8px;}
+.rexy-thinking .eye{width:8px;height:8px;border-radius:50%;
+  box-shadow:0 0 8px var(--cyan),0 0 16px var(--cyan-mid);
+  animation:thinkingDot 1.4s ease-in-out infinite;}
+.rexy-thinking .eye:nth-child(1){animation-delay:0s;}
+.rexy-thinking .eye:nth-child(2){animation-delay:.22s;}
+.rexy-thinking .eye:nth-child(3){animation-delay:.44s;}
+.rexy-thinking .mouth{display:none;}
+.rexy-thinking.robot{animation:float 5.6s cubic-bezier(.45,.05,.55,.95) infinite;}
+
+/* SPEAKING */
+.rexy-speaking .eye{width:22px;height:22px;border-radius:50%;
+  animation:speakScale .85s ease-in-out infinite;
+  box-shadow:0 0 8px var(--cyan),0 0 22px var(--cyan-mid),0 0 50px var(--cyan-25);}
+.rexy-speaking .mouth{width:28px;height:7px;border-radius:4px;
+  background:linear-gradient(90deg,#c4b5fd,#a78bfa);
+  box-shadow:0 0 10px var(--cyan),0 0 20px var(--cyan-mid);
+  animation:mouthSpeak .4s ease-in-out infinite alternate;}
+.rexy-speaking.robot{animation:float 2.6s cubic-bezier(.45,.05,.55,.95) infinite;}
+
+/* HAPPY — arc eyes + wide smile */
+.rexy-happy .eye{width:24px;height:12px;border-radius:50% 50% 0 0 / 100% 100% 0 0;
+  background:radial-gradient(ellipse at 40% 20%,#e8fbff 0%,#7aeeff 40%,#2ec8e6 100%);
+  box-shadow:0 0 10px rgba(122,238,255,.9),0 0 26px rgba(71,227,255,.6);
+  animation:happyBounce .5s ease-in-out infinite alternate;}
+.rexy-happy .eye::after{top:8%;left:14%;width:6px;height:5px;}
+.rexy-happy .mouth{width:36px;height:13px;border-radius:0 0 22px 22px;
+  border:2.5px solid var(--cyan);border-top:none;
+  box-shadow:0 0 10px rgba(71,227,255,.5),0 0 22px rgba(71,227,255,.25);}
+.rexy-happy.robot{animation:float 2.2s cubic-bezier(.45,.05,.55,.95) infinite;}
+
+/* SAD — tilted eyes + tears + frown */
+.rexy-sad .eye{width:20px;height:20px;border-radius:50%;
+  background:radial-gradient(ellipse at 38% 35%,#cceeff 0%,#5ab8f0 40%,#2060b8 100%);
+  box-shadow:0 0 8px rgba(100,160,255,.8),0 0 18px rgba(80,130,255,.4);
+  animation:sadShimmer 3s ease-in-out infinite;overflow:visible;}
+.rexy-sad .eye:first-child{transform:rotate(-12deg);}
+.rexy-sad .eye:last-child{transform:rotate(12deg);}
+.rexy-sad .eye::before{content:'';position:absolute;bottom:-3px;left:50%;
+  transform:translateX(-50%);width:4px;border-radius:0 0 4px 4px;
+  background:linear-gradient(to bottom,rgba(120,200,255,.9) 0%,rgba(80,160,255,0) 100%);
+  animation:tearFall 2.6s ease-in infinite;pointer-events:none;}
+.rexy-sad .eye:last-child::before{animation-delay:1.2s;}
+.rexy-sad .eye::after{background:rgba(255,255,255,.55)!important;filter:blur(2px)!important;}
+.rexy-sad .mouth{width:26px;height:10px;border-radius:22px 22px 0 0;
+  border:2px solid rgba(100,160,255,.65);border-bottom:none;margin-top:2px;
+  box-shadow:0 0 8px rgba(100,160,255,.3);}
+.rexy-sad.robot{animation:float 7.0s cubic-bezier(.45,.05,.55,.95) infinite;}
+
+/* ERROR — X eyes + flat mouth */
+.rexy-error .eye{width:22px;height:22px;background:transparent!important;
+  box-shadow:none!important;animation:errorFlicker 1.2s ease-in-out infinite;}
+.rexy-error .eye::before,.rexy-error .eye::after{content:'';position:absolute;
+  width:17px;height:3px;border-radius:2px;background:rgba(255,90,80,.92);
+  box-shadow:0 0 8px rgba(255,90,80,.6);top:50%;left:50%;transform-origin:center;}
+.rexy-error .eye::before{transform:translate(-50%,-50%) rotate(45deg);}
+.rexy-error .eye::after{transform:translate(-50%,-50%) rotate(-45deg);}
+.rexy-error .mouth{width:22px;height:3px;border-radius:2px;
+  background:rgba(255,90,80,.7);box-shadow:0 0 8px rgba(255,90,80,.4);}
+.rexy-error.robot{animation:float 6.0s cubic-bezier(.45,.05,.55,.95) infinite;}
+
+/* BODY */
+.body-wrap{position:relative;display:flex;justify-content:center;align-items:flex-start;
+  margin-top:8px;z-index:0;width:100%;}
+.body{width:120px;height:92px;border-radius:44% 44% 56% 56%/36% 36% 64% 64%;
+  background:linear-gradient(180deg,#ffffff 0%,#f5f3ff 15%,#ede9fe 35%,#7c6cbf 68%,#4c3d99 100%);
+  box-shadow:inset 0 10px 16px rgba(255,255,255,.85),inset 0 -20px 26px rgba(60,30,160,.50),
+    0 12px 28px rgba(0,0,0,.45),inset 0 2px 8px rgba(255,255,255,.75),inset 0 -6px 10px rgba(80,50,200,.38);
+  position:relative;z-index:1;animation:breathe 5.8s ease-in-out infinite;transform-origin:center bottom;}
+.arm{position:absolute;top:28px;width:28px;height:54px;border-radius:50%;
+  background:linear-gradient(to right,#4c3d99 0%,#8b7fd4 25%,#ffffff 50%,#8b7fd4 75%,#4c3d99 100%);
+  box-shadow:0 5px 14px rgba(0,0,0,.40),inset 0 4px 6px rgba(255,255,255,.55),
+    inset 0 -4px 8px rgba(60,30,160,.35),inset 0 2px 8px rgba(255,255,255,.40);}
+.arm-left{left:32px;transform:rotate(-8deg);transform-origin:top center;}
+.arm-right{right:32px;transform:rotate(8deg);transform-origin:top center;}
+.shadow{width:140px;height:20px;border-radius:50%;background:rgba(20,55,60,.55);
+  filter:blur(12px);margin-top:18px;
+  animation:shadowPulse 4.2s cubic-bezier(.45,.05,.55,.95) infinite;}
+
+/* CHAT */
+#chat-panel{width:100%;max-width:680px;margin:0 auto;padding:0 20px;
+  max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;scrollbar-width:none;}
+#chat-panel::-webkit-scrollbar{display:none;}
+#welcome{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px;opacity:0;
+  animation:welcome-in 1s .5s ease forwards;}
+@keyframes welcome-in{from{opacity:0;transform:translateY(8px);}to{opacity:.3;transform:translateY(0);}}
+#welcome-title{font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;color:#c4b5fd;}
+#welcome-sub{font-size:13px;color:#6b5fa0;font-family:'Nunito',sans-serif;font-weight:400;}
+.msg-row{display:flex;flex-direction:column;animation:msg-fade .4s ease both;}
+@keyframes msg-fade{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.msg-row.user{align-items:flex-end;}.msg-row.rexy{align-items:flex-start;}
+.msg-meta{font-family:'Nunito',sans-serif;font-size:10px;color:var(--dim);font-weight:500;
+  margin-bottom:3px;padding:0 6px;letter-spacing:.5px;}
+.bubble{max-width:72%;padding:10px 15px;font-size:14px;font-weight:400;line-height:1.65;
+  word-break:break-word;border-radius:16px;}
+.msg-row.user .bubble{background:var(--user-bg);border:1px solid rgba(109,40,217,.25);
+  border-bottom-right-radius:3px;color:var(--white);}
+.msg-row.rexy .bubble{background:var(--rexy-bg);border:1px solid var(--border2);
+  border-bottom-left-radius:3px;color:var(--white);}
+#thinking-row{display:flex;align-items:flex-start;opacity:0;transform:translateY(6px);
+  transition:opacity .2s ease,transform .2s ease;pointer-events:none;}
+#thinking-row.visible{opacity:1;transform:translateY(0);}
+#thinking-bubble{display:flex;align-items:center;gap:4px;padding:10px 16px;
+  background:var(--rexy-bg);border:1px solid var(--border2);
+  border-radius:16px;border-bottom-left-radius:3px;}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--cyan);opacity:.3;
+  animation:dot-wave 1.4s infinite ease-in-out;}
+.dot:nth-child(1){animation-delay:0s;}.dot:nth-child(2){animation-delay:.18s;}.dot:nth-child(3){animation-delay:.36s;}
+@keyframes dot-wave{0%,60%,100%{transform:translateY(0);opacity:.3;}30%{transform:translateY(-5px);opacity:1;}}
+
+/* INPUT */
+#input-zone{width:100%;max-width:680px;margin:0 auto;padding:10px 20px 20px;}
+#input-zone::before{content:'';display:block;height:1px;
+  background:linear-gradient(90deg,transparent,var(--border2),transparent);margin-bottom:12px;opacity:.5;}
+#input-bar{display:flex;align-items:center;gap:8px;background:rgba(10,10,18,.9);
+  border:1px solid var(--border);border-radius:32px;padding:6px 6px 6px 22px;
+  backdrop-filter:blur(20px);transition:border-color .3s ease,box-shadow .3s ease;position:relative;}
+#input-bar::before{content:'';position:absolute;inset:-1px;border-radius:32px;
+  background:linear-gradient(135deg,transparent 40%,rgba(71,227,255,.04) 100%);pointer-events:none;}
+#input-bar:focus-within{border-color:rgba(167,139,250,.30);
+  box-shadow:0 0 0 4px rgba(167,139,250,.06),0 0 40px rgba(167,139,250,.08);}
+#message-input{flex:1;background:none;border:none;outline:none;color:var(--white);
+  font-family:'Nunito',sans-serif;font-size:15px;font-weight:400;}
+#message-input::placeholder{color:var(--dim);font-weight:300;}
+#btn-sparkle{width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+  background:var(--dim2);border:1px solid var(--border);border-radius:50%;font-size:16px;
+  cursor:pointer;transition:all .2s ease;flex-shrink:0;}
+#btn-sparkle:hover{background:rgba(71,227,255,.08);border-color:var(--border2);transform:scale(1.05) rotate(15deg);}
+#btn-ask{height:38px;padding:0 22px;
+  background:linear-gradient(135deg,#a78bfa 0%,#7c3aed 100%);
+  color:#fff;border:none;border-radius:24px;font-family:'Nunito',sans-serif;font-size:13px;
+  font-weight:700;letter-spacing:1.5px;cursor:pointer;transition:all .2s ease;flex-shrink:0;
+  position:relative;overflow:hidden;}
+#btn-ask::before{content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.15) 0%,transparent 60%);border-radius:24px;}
+#btn-ask:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(167,139,250,.40),0 0 40px rgba(167,139,250,.18);}
+#btn-ask:active{transform:scale(.97) translateY(0);}
+/* state chips removed */
+@keyframes input-flash{
+  0%{border-color:rgba(167,139,250,.6);box-shadow:0 0 0 4px rgba(167,139,250,.14);}
+  100%{border-color:rgba(167,139,250,.25);box-shadow:0 0 0 4px rgba(167,139,250,.05);}}
+#input-bar.flash{animation:input-flash .5s ease-out forwards;}
+
+/* ── LISTENING — user is typing ── */
+.rexy-listening .eye {
+  width:24px; height:24px; border-radius:50%;
+  box-shadow:0 0 10px #c4b5fd, 0 0 24px rgba(167,139,250,.6), 0 0 40px rgba(167,139,250,.2);
+  animation:blink 8s ease-in-out infinite;
+  transition: width .3s ease, height .3s ease, box-shadow .3s ease;
+}
+.rexy-listening .mouth {
+  width:24px; height:8px;
+  border-radius:0 0 16px 16px;
+  border:2px solid rgba(196,181,253,.7); border-top:none;
+  box-shadow:0 0 8px rgba(167,139,250,.3);
+}
+.rexy-listening.robot { animation:float 4.8s cubic-bezier(.45,.05,.55,.95) infinite; }
+.rexy-stage.rexy-listening::before {
+  background:radial-gradient(circle,rgba(167,139,250,.16) 0%,transparent 68%);
+  animation:haloSpeak 2.4s ease-in-out infinite alternate;
 }
 
-#topbar-center {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* ── Aurora blobs ── */
+.aurora {
+  position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;
+}
+.aurora-blob {
+  position:absolute; border-radius:50%;
+  filter:blur(80px); opacity:0;
+  animation:aurora-fade-in 3s ease forwards;
+}
+.aurora-blob-1 {
+  width:500px; height:400px; top:-100px; left:-100px;
+  background:radial-gradient(ellipse,rgba(124,58,237,0.18) 0%,transparent 70%);
+  animation:aurora-fade-in 3s .3s ease forwards, aurora-drift-1 20s 3.3s ease-in-out infinite alternate;
+}
+.aurora-blob-2 {
+  width:450px; height:350px; top:30%; right:-80px;
+  background:radial-gradient(ellipse,rgba(167,139,250,0.13) 0%,transparent 70%);
+  animation:aurora-fade-in 3s .7s ease forwards, aurora-drift-2 25s 3.7s ease-in-out infinite alternate;
+}
+.aurora-blob-3 {
+  width:380px; height:320px; bottom:-60px; left:30%;
+  background:radial-gradient(ellipse,rgba(109,40,217,0.12) 0%,transparent 70%);
+  animation:aurora-fade-in 3s 1.1s ease forwards, aurora-drift-3 30s 4.1s ease-in-out infinite alternate;
+}
+@keyframes aurora-fade-in {
+  from{opacity:0;} to{opacity:1;}
+}
+@keyframes aurora-drift-1 {
+  from{transform:translate(0,0) scale(1);}
+  to{transform:translate(60px,40px) scale(1.1);}
+}
+@keyframes aurora-drift-2 {
+  from{transform:translate(0,0) scale(1);}
+  to{transform:translate(-50px,60px) scale(0.95);}
+}
+@keyframes aurora-drift-3 {
+  from{transform:translate(0,0) scale(1);}
+  to{transform:translate(40px,-50px) scale(1.08);}
 }
 
-#status-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 8px var(--green), 0 0 16px rgba(16,185,129,0.3);
-  animation: status-pulse 2s infinite;
+/* ── Rexy avatar dot ── */
+.msg-row.rexy { flex-direction:column; }
+.rexy-msg-wrap { display:flex; align-items:flex-end; gap:8px; }
+.rexy-avatar {
+  width:22px; height:22px; border-radius:50%; flex-shrink:0;
+  background:radial-gradient(circle at 35% 35%, #ffffff 0%, #ede9fe 40%, #7c3aed 100%);
+  box-shadow:0 0 8px rgba(124,58,237,.5), inset 0 1px 2px rgba(255,255,255,.6);
+  margin-bottom:2px;
 }
 
-@keyframes status-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--green); }
-  50%       { opacity: 0.5; box-shadow: 0 0 4px var(--green); }
+/* ── Input star ── */
+#input-star {
+  font-size:14px; color:rgba(196,181,253,.35);
+  animation:star-pulse 2.8s ease-in-out infinite;
+  flex-shrink:0; pointer-events:none; user-select:none;
+  transition: color .3s ease;
+}
+#input-star.active { color:rgba(196,181,253,.8); animation:none; }
+@keyframes star-pulse {
+  0%,100%{opacity:.25; transform:scale(1);}
+  50%{opacity:.7; transform:scale(1.2);}
 }
 
-#status-text {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--dim);
-  letter-spacing: 1px;
+/* ── Rexy nameplate ── */
+#rexy-nameplate {
+  position:absolute; bottom:-28px; left:50%;
+  transform:translateX(-50%);
+  font-family:'Nunito',sans-serif; font-size:11px;
+  font-weight:700; letter-spacing:3px;
+  color:rgba(196,181,253,.35);
+  text-shadow:0 0 12px rgba(124,58,237,.4);
+  animation:nameplate-glow 3.5s ease-in-out infinite;
+  white-space:nowrap; pointer-events:none;
+  text-transform:lowercase;
 }
-
-#plugin-badge {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1px;
-  color: var(--cyan);
-  padding: 3px 10px;
-  border: 1px solid var(--border2);
-  border-radius: 20px;
-  background: var(--cyan-soft);
-  opacity: 0;
-  transform: translateY(-6px) scale(0.95);
-  transition: opacity 0.3s cubic-bezier(0.34,1.56,0.64,1),
-              transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
-  pointer-events: none;
-}
-
-#plugin-badge.visible { opacity: 1; transform: translateY(0) scale(1); }
-
-#shortcut-hint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  color: var(--dim2);
-}
-
-#shortcut-hint kbd {
-  background: var(--dim2);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 3px;
-  padding: 1px 5px;
-  font-size: 9px;
-  color: var(--dim);
-}
-
-/* ── Robot stage ── */
-#robot-stage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  position: relative;
-  overflow: hidden;
-}
-
-#robotCanvas {
-  width: 280px;
-  height: 350px;
-  display: block;
-  filter: drop-shadow(0 0 30px rgba(0, 229, 255, 0.08));
-  transition: filter 0.5s ease;
-}
-
-#robotCanvas.thinking-state {
-  filter: drop-shadow(0 0 40px rgba(0, 229, 255, 0.18));
-}
-
-/* Floor glow under robot */
-#floor-glow {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 200px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--cyan-dim), transparent);
-  box-shadow: 0 0 20px 8px rgba(0, 229, 255, 0.06);
-}
-
-/* ── Chat panel ── */
-#chat-panel {
-  width: 100%;
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 0 20px;
-  max-height: 240px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  scrollbar-width: none;
-}
-
-#chat-panel::-webkit-scrollbar { display: none; }
-
-/* Welcome state */
-#welcome {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 20px;
-  opacity: 0;
-  animation: welcome-in 1s 0.5s ease forwards;
-}
-
-@keyframes welcome-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 0.3; transform: translateY(0); }
-}
-
-#welcome-title {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 11px;
-  letter-spacing: 5px;
-  color: var(--cyan);
-}
-
-#welcome-sub {
-  font-size: 12px;
-  color: var(--dim);
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* Message rows */
-.msg-row {
-  display: flex;
-  flex-direction: column;
-  animation: msg-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-
-@keyframes msg-pop {
-  from { opacity: 0; transform: translateY(16px) scale(0.95); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.msg-row.user { align-items: flex-end; }
-.msg-row.rexy { align-items: flex-start; }
-
-.msg-meta {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  color: var(--dim);
-  margin-bottom: 3px;
-  padding: 0 6px;
-  letter-spacing: 0.5px;
-}
-
-.bubble {
-  max-width: 72%;
-  padding: 10px 15px;
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.65;
-  word-break: break-word;
-  border-radius: 16px;
-}
-
-.msg-row.user .bubble {
-  background: var(--user-bg);
-  border: 1px solid rgba(109,40,217,0.25);
-  border-bottom-right-radius: 3px;
-  color: var(--white);
-  backdrop-filter: blur(10px);
-}
-
-.msg-row.rexy .bubble {
-  background: var(--rexy-bg);
-  border: 1px solid var(--border2);
-  border-bottom-left-radius: 3px;
-  color: var(--white);
-  backdrop-filter: blur(10px);
-}
-
-/* Thinking row */
-#thinking-row {
-  display: flex;
-  align-items: flex-start;
-  opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  pointer-events: none;
-}
-
-#thinking-row.visible { opacity: 1; transform: translateY(0); }
-
-#thinking-bubble {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 10px 16px;
-  background: var(--rexy-bg);
-  border: 1px solid var(--border2);
-  border-radius: 16px;
-  border-bottom-left-radius: 3px;
-}
-
-.dot {
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: var(--cyan);
-  opacity: 0.3;
-  animation: dot-wave 1.4s infinite ease-in-out;
-}
-.dot:nth-child(1) { animation-delay: 0s; }
-.dot:nth-child(2) { animation-delay: 0.18s; }
-.dot:nth-child(3) { animation-delay: 0.36s; }
-
-@keyframes dot-wave {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
-  30% { transform: translateY(-5px); opacity: 1; }
-}
-
-/* ── Input zone ── */
-#input-zone {
-  width: 100%;
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 12px 20px 24px;
-}
-
-/* Divider above input */
-#input-zone::before {
-  content: '';
-  display: block;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border2), transparent);
-  margin-bottom: 14px;
-  opacity: 0.6;
-}
-
-#input-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(10, 10, 18, 0.9);
-  border: 1px solid var(--border);
-  border-radius: 32px;
-  padding: 6px 6px 6px 22px;
-  backdrop-filter: blur(20px);
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-  position: relative;
-}
-
-#input-bar::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: 32px;
-  background: linear-gradient(135deg, transparent 40%, rgba(0,229,255,0.05) 100%);
-  pointer-events: none;
-}
-
-#input-bar:focus-within {
-  border-color: rgba(0, 229, 255, 0.25);
-  box-shadow:
-    0 0 0 4px rgba(0, 229, 255, 0.04),
-    0 0 40px rgba(0, 229, 255, 0.06),
-    inset 0 1px 0 rgba(255,255,255,0.03);
-}
-
-#message-input {
-  flex: 1;
-  background: none;
-  border: none;
-  outline: none;
-  color: var(--white);
-  font-family: 'Nunito', sans-serif;
-  font-size: 15px;
-  font-weight: 400;
-  letter-spacing: 0.2px;
-}
-
-#message-input::placeholder {
-  color: var(--dim);
-  font-weight: 300;
-}
-
-#btn-sparkle {
-  width: 38px; height: 38px;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--dim2);
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-#btn-sparkle:hover {
-  background: rgba(0,229,255,0.08);
-  border-color: var(--border2);
-  transform: scale(1.05) rotate(15deg);
-}
-
-#btn-ask {
-  height: 38px;
-  padding: 0 22px;
-  background: linear-gradient(135deg, var(--cyan) 0%, var(--cyan-dim) 100%);
-  color: #000;
-  border: none;
-  border-radius: 24px;
-  font-family: 'Orbitron', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
-}
-
-#btn-ask::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
-  border-radius: 24px;
-}
-
-#btn-ask:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(0, 229, 255, 0.35), 0 0 40px rgba(0, 229, 255, 0.15);
-}
-
-#btn-ask:active { transform: scale(0.97) translateY(0); }
-
-/* ── Emotion chips ── */
-#emotion-strip {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.chip {
-  background: transparent;
-  border: 1px solid var(--dim2);
-  color: var(--dim);
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.chip:hover {
-  border-color: rgba(0,229,255,0.2);
-  color: rgba(0,229,255,0.6);
-}
-
-.chip.active {
-  border-color: var(--cyan);
-  color: var(--cyan);
-  background: var(--cyan-soft);
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.1), inset 0 0 8px rgba(0, 229, 255, 0.04);
-}
-
-/* ── Flash animation for shortcut ── */
-@keyframes input-flash {
-  0%   { border-color: rgba(0,229,255,0.6); box-shadow: 0 0 0 4px rgba(0,229,255,0.12); }
-  100% { border-color: rgba(0,229,255,0.25); box-shadow: 0 0 0 4px rgba(0,229,255,0.04); }
-}
-
-#input-bar.flash {
-  animation: input-flash 0.5s ease-out forwards;
-}
-
-/* ── Particle canvas ── */
-#particle-canvas {
-  position: fixed; inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.6;
+@keyframes nameplate-glow {
+  0%,100%{color:rgba(196,181,253,.25); text-shadow:0 0 8px rgba(124,58,237,.2);}
+  50%{color:rgba(196,181,253,.5); text-shadow:0 0 18px rgba(124,58,237,.5);}
 }
 </style>
 </head>
 <body>
-
-<!-- Layers -->
 <canvas id="particle-canvas"></canvas>
-<div id="ambient"></div>
-
+<!-- Aurora background blobs -->
+<div class="aurora" aria-hidden="true">
+  <div class="aurora-blob aurora-blob-1"></div>
+  <div class="aurora-blob aurora-blob-2"></div>
+  <div class="aurora-blob aurora-blob-3"></div>
+</div>
 <div id="app">
-
-  <!-- Topbar -->
   <div id="topbar">
     <span id="logo">REXY</span>
     <div id="topbar-center">
@@ -518,381 +413,138 @@ html, body {
       <span id="status-text">ONLINE</span>
     </div>
     <div id="plugin-badge">PLUGIN</div>
-    <div id="shortcut-hint">press <kbd>/</kbd> to focus</div>
+    <div id="shortcut-hint" style="display:none;">press <kbd>/</kbd> to focus</div>
   </div>
 
-  <!-- Robot stage -->
-  <div id="robot-stage">
-    <canvas id="robotCanvas" width="400" height="500"></canvas>
+  <div id="robot-stage-wrap">
+    <div class="rexy-stage rexy-idle" id="rexy-stage">
+      <div class="robot rexy-idle" id="rexy">
+        <div class="antenna">
+          <div class="antenna-ball"></div>
+          <div class="antenna-rod"></div>
+        </div>
+        <div class="head">
+          <div class="visor">
+            <div class="eye-row">
+              <div class="eye"></div>
+              <div class="eye"></div>
+              <div class="eye" id="third-eye" style="display:none;"></div>
+            </div>
+            <div class="mouth-row">
+              <div class="mouth"></div>
+            </div>
+          </div>
+        </div>
+        <div class="body-wrap">
+          <div class="arm arm-left"></div>
+          <div class="body"></div>
+          <div class="arm arm-right"></div>
+        </div>
+        <div class="shadow"></div>
+      </div>
+    </div>
+    <div id="rexy-nameplate">rexy</div>
     <div id="floor-glow"></div>
   </div>
 
-  <!-- Chat panel -->
   <div id="chat-panel">
     <div id="welcome">
-      <div id="welcome-title">REXY · v4.0</div>
-      <div id="welcome-sub">say something_</div>
+      <div id="welcome-title">hey, i'm rexy ✨</div>
+      <div id="welcome-sub">talk to me about anything</div>
     </div>
     <div id="thinking-row">
       <div id="thinking-bubble">
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
       </div>
     </div>
   </div>
 
-  <!-- Input -->
   <div id="input-zone">
     <div id="input-bar">
-      <input id="message-input" placeholder="Talk to Rexy..." autocomplete="off" spellcheck="false" />
-      <button id="btn-sparkle" onclick="inspireMe()" title="Inspire me">✨</button>
+      <span id="input-star">✦</span>
+      <input id="message-input" placeholder="say something... ☁️" autocomplete="off" spellcheck="false"/>
+      <button id="btn-sparkle" onclick="inspireMe()">✨</button>
       <button id="btn-ask" onclick="handleChat()">ASK</button>
     </div>
-    <div id="emotion-strip">
-      <button class="chip" onclick="setMood('neutral')"  id="neutral-btn">NEUTRAL</button>
-      <button class="chip" onclick="setMood('happy')"    id="happy-btn">HAPPY</button>
-      <button class="chip" onclick="setMood('thinking')" id="thinking-btn">THINKING</button>
-      <button class="chip" onclick="setMood('sad')"      id="sad-btn">SAD</button>
-    </div>
-  </div>
 
+  </div>
 </div>
 
 <script>
-// ════════════════════════════════════════════════════
-// PARTICLE SYSTEM — floating space dust
-// ════════════════════════════════════════════════════
-const pCanvas = document.getElementById('particle-canvas');
-const pCtx    = pCanvas.getContext('2d');
-
-pCanvas.width  = window.innerWidth;
-pCanvas.height = window.innerHeight;
-
-const particles = Array.from({ length: 60 }, () => ({
-  x:     Math.random() * pCanvas.width,
-  y:     Math.random() * pCanvas.height,
-  r:     Math.random() * 1.2 + 0.2,
-  vx:    (Math.random() - 0.5) * 0.15,
-  vy:    (Math.random() - 0.5) * 0.15,
-  alpha: Math.random() * 0.4 + 0.05,
-  pulse: Math.random() * Math.PI * 2
+/* PARTICLES */
+const pCanvas=document.getElementById('particle-canvas'),pCtx=pCanvas.getContext('2d');
+pCanvas.width=window.innerWidth; pCanvas.height=window.innerHeight;
+const particles=Array.from({length:55},()=>({
+  x:Math.random()*pCanvas.width, y:Math.random()*pCanvas.height,
+  r:Math.random()*1.1+0.2, vx:(Math.random()-.5)*.14, vy:(Math.random()-.5)*.14,
+  alpha:Math.random()*.35+.05, pulse:Math.random()*Math.PI*2
 }));
-
-function animateParticles() {
-  pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-  particles.forEach(p => {
-    p.x     += p.vx;
-    p.y     += p.vy;
-    p.pulse += 0.01;
-    const a  = p.alpha * (0.7 + 0.3 * Math.sin(p.pulse));
-    if (p.x < 0) p.x = pCanvas.width;
-    if (p.x > pCanvas.width)  p.x = 0;
-    if (p.y < 0) p.y = pCanvas.height;
-    if (p.y > pCanvas.height) p.y = 0;
-    pCtx.beginPath();
-    pCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    pCtx.fillStyle = `rgba(0, 229, 255, ${a})`;
-    pCtx.fill();
+(function animateP(){
+  pCtx.clearRect(0,0,pCanvas.width,pCanvas.height);
+  particles.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.pulse+=.01;
+    const a=p.alpha*(.7+.3*Math.sin(p.pulse));
+    if(p.x<0)p.x=pCanvas.width; if(p.x>pCanvas.width)p.x=0;
+    if(p.y<0)p.y=pCanvas.height; if(p.y>pCanvas.height)p.y=0;
+    pCtx.beginPath(); pCtx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    pCtx.fillStyle=`rgba(220,210,255,${a})`; pCtx.fill();
   });
-  requestAnimationFrame(animateParticles);
-}
+  requestAnimationFrame(animateP);
+})();
+window.addEventListener('resize',()=>{pCanvas.width=window.innerWidth;pCanvas.height=window.innerHeight;});
 
-animateParticles();
-
-window.addEventListener('resize', () => {
-  pCanvas.width  = window.innerWidth;
-  pCanvas.height = window.innerHeight;
-});
-
-// ════════════════════════════════════════════════════
-// ROBOT — original white robot, 100% preserved
-// ════════════════════════════════════════════════════
-const canvas = document.getElementById('robotCanvas');
-const ctx    = canvas.getContext('2d');
-
-const robot = {
-  x: 0, y: 0, baseY: 0, floatOffset: 0, time: 0,
-  eyes: {
-    left:  { x: -35, y: -10, targetX: -35, targetY: -10 },
-    right: { x:  35, y: -10, targetX:  35, targetY: -10 },
-    blinkOpen: 1, nextBlinkTime: 0, width: 15, height: 22
-  },
-  mood: 'neutral'
+/* ROBOT STATE SYSTEM */
+const rexy=document.getElementById('rexy'),rexyStage=document.getElementById('rexy-stage');
+const thirdEye=document.getElementById('third-eye');
+const ROBOT_STATES=['rexy-idle','rexy-thinking','rexy-speaking','rexy-happy','rexy-sad','rexy-error','rexy-listening'];
+const STATE_BTN_MAP={
+  'rexy-idle':'idle-btn','rexy-thinking':'thinking-btn','rexy-speaking':'speaking-btn',
+  'rexy-happy':'happy-btn','rexy-sad':'sad-btn','rexy-error':'error-btn'
 };
 
-let uiState = 'idle', stateTime = 0, stateTransition = 0;
-let isThinking = false;
-
-const STATES = {
-  idle:       { floatAmp: 12, floatSpeed: 0.3,  eyeDrift: 8,  glowRadius: 25, shadowBlur: 20 },
-  listening:  { floatAmp:  5, floatSpeed: 0.2,  eyeDrift: 2,  glowRadius: 18, shadowBlur: 12 },
-  thinking:   { floatAmp:  2, floatSpeed: 0.1,  eyeDrift: 0,  glowRadius: 22, shadowBlur: 15 },
-  responding: { floatAmp:  8, floatSpeed: 0.8,  eyeDrift: 3,  glowRadius: 28, shadowBlur: 18 }
+// ── Emotion → robot state (auto from pipeline data.emotion) ──
+const EMOTION_MAP={
+  happy:'rexy-happy', joy:'rexy-happy', excited:'rexy-happy',
+  positive:'rexy-happy', glad:'rexy-happy', great:'rexy-happy',
+  sad:'rexy-sad', upset:'rexy-sad', sorry:'rexy-sad',
+  negative:'rexy-sad', disappointed:'rexy-sad',
+  error:'rexy-error', confused:'rexy-error'
 };
 
-const COLOR_PALETTE = {
-  bodyLight:  '#ffffff',
-  bodyMid:    '#f0f5fa',
-  bodyShadow: '#dbe4eb',
-  visorDark:  '#181b26',
-  visorLight: '#2a3040',
-  eyeGlow:    'rgba(0, 245, 255, 0.5)',
-  eyeCore:    '#00f5ff'
-};
-
-function resize() {
-  canvas.width  = 400;
-  canvas.height = 500;
-  robot.x       = canvas.width  / 2;
-  robot.baseY   = canvas.height / 2;
-}
-window.addEventListener('resize', resize);
-resize();
-
-function easeInOutSine(x) { return -(Math.cos(Math.PI * x) - 1) / 2; }
-
-function drawRoundedRect(ctx, x, y, w, h, r) {
-  if (w < 2*r) r = w/2; if (h < 2*r) r = h/2;
-  ctx.beginPath();
-  ctx.moveTo(x+r, y);
-  ctx.arcTo(x+w, y, x+w, y+h, r); ctx.arcTo(x+w, y+h, x, y+h, r);
-  ctx.arcTo(x, y+h, x, y, r);     ctx.arcTo(x, y, x+w, y, r);
-  ctx.closePath();
-}
-
-function drawShadow() {
-  const floatPhase   = Math.sin(robot.time);
-  const baseWidth    = 110;
-  const shadowFactor = (floatPhase + 1) / 2;
-  const currentWidth = baseWidth + shadowFactor * 25;
-  const currentBlur  = 15 + shadowFactor * 15;
-  const currentAlpha = 0.15 - shadowFactor * 0.05;
-  const shadowY      = robot.baseY + 140;
-  const state        = STATES[uiState];
-  ctx.shadowBlur     = state.shadowBlur + Math.sin(stateTime * 0.2) * 3;
-  ctx.save();
-  ctx.translate(robot.x, shadowY);
-  ctx.scale(1, 0.3);
-  const g = ctx.createRadialGradient(0,0,0,0,0,currentWidth);
-  g.addColorStop(0,   `rgba(0,40,80,${currentAlpha})`);
-  g.addColorStop(0.5, `rgba(0,40,80,${currentAlpha*0.5})`);
-  g.addColorStop(1,   `rgba(0,40,80,0)`);
-  ctx.fillStyle = g;
-  ctx.shadowBlur  = currentBlur;
-  ctx.shadowColor = "rgba(0,0,0,0.1)";
-  ctx.beginPath();
-  ctx.arc(0,0,currentWidth,0,Math.PI*2);
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawArms() {
-  const bodyY = robot.y + 55;
-  ctx.save();
-  ctx.translate(robot.x, bodyY);
-  const ag = ctx.createLinearGradient(0,-20,0,40);
-  ag.addColorStop(0, COLOR_PALETTE.bodyLight);
-  ag.addColorStop(1, COLOR_PALETTE.bodyShadow);
-  ctx.fillStyle = ag;
-  drawSingleArm(-1); drawSingleArm(1);
-  ctx.restore();
-}
-
-function drawSingleArm(side) {
-  const startX=35*side,startY=-15,endX=65*side,endY=25,sw=18,ww=10;
-  ctx.beginPath();
-  ctx.moveTo(startX,startY-sw/2);
-  ctx.lineTo(endX,endY-ww/2);
-  ctx.arc(endX,endY,8,-Math.PI/2,Math.PI/2,false);
-  ctx.arc(endX,endY,8,Math.PI/2,-Math.PI/2,false);
-  ctx.lineTo(endX,endY+ww/2);
-  ctx.lineTo(startX,startY+sw/2);
-  ctx.fill();
-  ctx.shadowColor="rgba(0,0,0,0.05)"; ctx.shadowBlur=4; ctx.stroke();
-  ctx.shadowColor="transparent";
-}
-
-function drawBody() {
-  const bodyY=robot.y+55;
-  ctx.save();
-  ctx.translate(robot.x,bodyY);
-  const g=ctx.createRadialGradient(-30,-40,10,0,0,80);
-  g.addColorStop(0,'#ffffff'); g.addColorStop(0.3,COLOR_PALETTE.bodyMid); g.addColorStop(1,COLOR_PALETTE.bodyShadow);
-  ctx.fillStyle=g;
-  const w=84,h=55;
-  ctx.beginPath();
-  ctx.moveTo(-w+10,-20);
-  ctx.bezierCurveTo(-w,0,-w+5,h,-30,h+10);
-  ctx.quadraticCurveTo(0,h+15,30,h+10);
-  ctx.bezierCurveTo(w-5,h,w,0,w-10,-20);
-  ctx.fill();
-  ctx.shadowColor="rgba(255,255,255,0.5)"; ctx.shadowBlur=5; ctx.shadowOffsetY=1; ctx.stroke();
-  ctx.restore();
-}
-
-function drawHead() {
-  ctx.save();
-  ctx.translate(robot.x,robot.y);
-  ctx.shadowColor="rgba(160,170,190,0.2)"; ctx.shadowBlur=30; ctx.shadowOffsetY=15;
-  const hg=ctx.createRadialGradient(-50,-50,10,0,0,120);
-  hg.addColorStop(0,'#ffffff'); hg.addColorStop(0.4,COLOR_PALETTE.bodyMid); hg.addColorStop(1,COLOR_PALETTE.bodyShadow);
-  ctx.fillStyle=hg;
-  ctx.beginPath(); ctx.arc(0,0,105,0,Math.PI*2); ctx.fill();
-  ctx.shadowColor="transparent"; ctx.shadowBlur=0; ctx.shadowOffsetY=0;
-  const hl=ctx.createRadialGradient(0,-65,0,0,-65,55);
-  hl.addColorStop(0,"rgba(255,255,255,0.8)"); hl.addColorStop(1,"rgba(255,255,255,0)");
-  ctx.fillStyle=hl;
-  ctx.beginPath(); ctx.ellipse(0,-50,65,30,0,0,Math.PI*2); ctx.fill();
-  drawVisor();
-  ctx.restore();
-}
-
-function drawVisor() {
-  const visorW=160,visorH=100,visorY=10;
-  ctx.save();
-  ctx.beginPath();
-  drawRoundedRect(ctx,-visorW/2,visorY-visorH/2,visorW,visorH,45);
-  const vg=ctx.createLinearGradient(0,visorY-visorH/2,0,visorY+visorH/2);
-  vg.addColorStop(0,COLOR_PALETTE.visorDark); vg.addColorStop(1,'#050510');
-  ctx.fillStyle=vg; ctx.fill(); ctx.clip();
-  ctx.shadowBlur=25; ctx.shadowColor="rgba(0,0,0,0.9)";
-  ctx.shadowOffsetX=0; ctx.shadowOffsetY=5;
-  ctx.beginPath(); ctx.rect(-visorW/2-20,visorY-visorH/2-20,visorW+40,visorH+40); ctx.stroke();
-  ctx.shadowColor="transparent";
-  const gr=ctx.createLinearGradient(0,visorY-visorH/2,0,visorY);
-  gr.addColorStop(0,"rgba(255,255,255,0.08)"); gr.addColorStop(1,"rgba(255,255,255,0)");
-  ctx.fillStyle=gr;
-  ctx.beginPath(); ctx.ellipse(0,visorY-visorH/2+10,visorW/2-10,20,0,Math.PI,0); ctx.fill();
-  robot.eyes.left.targetX=Math.max(-48,Math.min(-16,robot.eyes.left.targetX));
-  robot.eyes.right.targetX=Math.max(16,Math.min(48,robot.eyes.right.targetX));
-  drawEyes();
-  ctx.restore();
-}
-
-function drawEyes() {
-  const HLM=-42,HRM=42,HSM=75;
-  robot.eyes.left.targetX=Math.max(HLM,Math.min(-20,robot.eyes.left.targetX));
-  robot.eyes.right.targetX=Math.max(20,Math.min(HRM,robot.eyes.right.targetX));
-  const sep=robot.eyes.right.targetX-robot.eyes.left.targetX;
-  if(sep<HSM){const a=(HSM-sep)/2;robot.eyes.left.targetX-=a;robot.eyes.right.targetX+=a;}
-  robot.eyes.left.x+=(robot.eyes.left.targetX-robot.eyes.left.x)*0.025;
-  robot.eyes.left.y+=(robot.eyes.left.targetY-robot.eyes.left.y)*0.025;
-  robot.eyes.right.x+=(robot.eyes.right.targetX-robot.eyes.right.x)*0.025;
-  robot.eyes.right.y+=(robot.eyes.right.targetY-robot.eyes.right.y)*0.025;
-  let eyeH=robot.eyes.height*robot.eyes.blinkOpen,eyeW=robot.eyes.width;
-  if(robot.mood==='sad')eyeH*=0.8;
-  else if(robot.mood==='thinking')eyeW*=0.9;
-  const pulse=1+Math.sin(robot.time*4)*0.05;
-  drawSingleEye(robot.eyes.left.x,robot.eyes.left.y,eyeW*pulse,eyeH,COLOR_PALETTE.eyeGlow,COLOR_PALETTE.eyeCore);
-  drawSingleEye(robot.eyes.right.x,robot.eyes.right.y,eyeW*pulse,eyeH,COLOR_PALETTE.eyeGlow,COLOR_PALETTE.eyeCore);
-}
-
-function drawSingleEye(x,y,w,h,glow,core) {
-  ctx.save();
-  ctx.translate(x,y+10);
-  ctx.shadowColor=glow;
-  ctx.shadowBlur=STATES[uiState].glowRadius+Math.sin(stateTime*0.4)*3;
-  ctx.fillStyle=core;
-  if(robot.mood==='happy'){
-    const so=x>0?-3:3;
-    ctx.beginPath(); ctx.arc(so,0,w*0.9,Math.PI,0);
-    ctx.lineWidth=4; ctx.strokeStyle=core; ctx.stroke();
-  } else {
-    ctx.beginPath(); ctx.ellipse(0,0,w,h,0,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.8)"; ctx.shadowBlur=0;
-    ctx.beginPath(); ctx.ellipse(0,0,w*0.4,h*0.4,0,0,Math.PI*2); ctx.fill();
-  }
-  ctx.restore();
-}
-
-function update() {
-  robot.time+=0.05; stateTime+=0.05;
-  stateTransition=Math.min(1,stateTransition+0.015);
-  const blend=easeInOutSine(stateTransition);
-  const floatAmp=15-(10*blend*((isThinking||uiState==='listening')?1:0));
-  robot.floatOffset=Math.sin(robot.time*0.4+stateTime*0.2)*floatAmp*(1+Math.sin(stateTime*0.3)*0.015);
-  robot.y=robot.baseY+robot.floatOffset;
-  const state=STATES[uiState];
-  if(uiState==='idle'&&Math.random()<0.005){
-    robot.eyes.left.targetX=-(Math.random()*state.eyeDrift);
-    robot.eyes.right.targetX=(Math.random()*state.eyeDrift);
-  } else if(uiState==='thinking'){
-    robot.eyes.left.targetY=-20+Math.sin(stateTime)*5;
-    robot.eyes.right.targetY=-20+Math.sin(stateTime)*5;
-  }
-  if(isThinking)uiState='thinking';
-  if(uiState==='responding'&&stateTime>1.5)uiState='idle';
-  if(Math.random()<0.01){
-    const bX=35,gX=(Math.random()-0.5)*10,gY=(Math.random()-0.5)*6;
-    robot.eyes.left.targetX=-bX+gX; robot.eyes.left.targetY=-10+gY;
-    robot.eyes.right.targetX=bX+gX; robot.eyes.right.targetY=-10+gY;
-  }
-  const now=Date.now();
-  if(now>robot.eyes.nextBlinkTime){
-    robot.eyes.blinkOpen-=0.15;
-    if(robot.eyes.blinkOpen<=0){
-      robot.eyes.blinkOpen=0;
-      setTimeout(openEyes,100);
-      robot.eyes.nextBlinkTime=now+2000+Math.random()*4000;
-    }
-  }
-  // Sync canvas filter with thinking state
-  canvas.classList.toggle('thinking-state', isThinking);
-}
-
-function openEyes() {
-  const iv=setInterval(()=>{
-    robot.eyes.blinkOpen+=0.15;
-    if(robot.eyes.blinkOpen>=1){robot.eyes.blinkOpen=1;clearInterval(iv);}
-  },16);
-}
-
-function drawRobot() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  update();
-  drawShadow(); drawArms(); drawBody(); drawHead();
-  requestAnimationFrame(drawRobot);
-}
-
-canvas.addEventListener('mousemove',(e)=>{
-  const rect=canvas.getBoundingClientRect();
-  const dx=((e.clientX-rect.left)-canvas.width/2)/(canvas.width/2);
-  const dy=((e.clientY-rect.top)-canvas.height/2)/(canvas.height/2);
-  robot.eyes.left.targetX=-35+(dx*10); robot.eyes.left.targetY=-10+(dy*10);
-  robot.eyes.right.targetX=35+(dx*10); robot.eyes.right.targetY=-10+(dy*10);
-});
-
-// ════════════════════════════════════════════════════
-// MOOD
-// ════════════════════════════════════════════════════
-function setMood(m) {
-  robot.mood=m;
+function setRobot(state){
+  rexy.classList.remove(...ROBOT_STATES); rexy.classList.add(state);
+  rexyStage.classList.remove(...ROBOT_STATES); rexyStage.classList.add(state);
+  thirdEye.style.display=(state==='rexy-thinking')?'block':'none';
   document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
-  const btn=document.getElementById(`${m}-btn`);
+  const btn=document.getElementById(STATE_BTN_MAP[state]);
   if(btn)btn.classList.add('active');
-  if(m==='sad'){robot.eyes.left.targetY=robot.eyes.right.targetY=0;}
-  else if(m==='thinking'){robot.eyes.left.targetY=robot.eyes.right.targetY=-15;}
-  else{robot.eyes.left.targetY=robot.eyes.right.targetY=-10;}
 }
 
-// ════════════════════════════════════════════════════
-// CHAT
-// ════════════════════════════════════════════════════
-const chatPanel   = document.getElementById('chat-panel');
-const thinkingRow = document.getElementById('thinking-row');
-const pluginBadge = document.getElementById('plugin-badge');
-const msgInput    = document.getElementById('message-input');
-const welcomeEl   = document.getElementById('welcome');
-const inputBar    = document.getElementById('input-bar');
+/* PARALLAX TILT */
+(function(){
+  let tx=0,ty=0,cx=0,cy=0; const MAX=3,LERP=.06;
+  window.addEventListener('mousemove',e=>{
+    ty=(e.clientX-window.innerWidth/2)/(window.innerWidth/2)*MAX;
+    tx=-(e.clientY-window.innerHeight/2)/(window.innerHeight/2)*MAX;
+  });
+  window.addEventListener('mouseleave',()=>{tx=0;ty=0;});
+  (function tick(){
+    cx+=(tx-cx)*LERP; cy+=(ty-cy)*LERP;
+    rexyStage.style.transform=`rotateX(${cx.toFixed(3)}deg) rotateY(${cy.toFixed(3)}deg)`;
+    requestAnimationFrame(tick);
+  })();
+})();
 
-let welcomeVisible=true, pluginTimer=null;
+/* CHAT + WEBSOCKET */
+const chatPanel=document.getElementById('chat-panel'),thinkingRow=document.getElementById('thinking-row');
+const pluginBadge=document.getElementById('plugin-badge'),msgInput=document.getElementById('message-input');
+const welcomeEl=document.getElementById('welcome'),inputBar=document.getElementById('input-bar');
+let welcomeVisible=true,pluginTimer=null;
 
-const PLUGIN_NAMES = {
-  WEATHER:'🌤  WEATHER', WEB_SEARCH:'🔍  WEB SEARCH',
-  MEMORY:'🧠  MEMORY',   FILE_READ:'📄  FILE READER',
-  SYSTEM_INFO:'🖥  SYSTEM INFO', CALCULATOR:'🧮  CALCULATOR',
-  GET_TIME:'🕐  TIME',
+const PLUGIN_NAMES={
+  WEATHER:'🌤 WEATHER', WEB_SEARCH:'🔍 WEB SEARCH', MEMORY:'🧠 MEMORY',
+  FILE_READ:'📄 FILE READER', SYSTEM_INFO:'🖥 SYSTEM INFO',
+  CALCULATOR:'🧮 CALCULATOR', GET_TIME:'🕐 TIME'
 };
 
 function showPlugin(name){
@@ -903,8 +555,8 @@ function showPlugin(name){
 }
 
 function setThinking(active){
-  isThinking=active;
   if(active){
+    setRobot('rexy-thinking');
     thinkingRow.classList.add('visible');
     chatPanel.appendChild(thinkingRow);
     chatPanel.scrollTop=chatPanel.scrollHeight;
@@ -915,29 +567,31 @@ function setThinking(active){
 
 function addMessage(sender,text){
   if(welcomeVisible){welcomeEl.style.display='none';welcomeVisible=false;}
-  const row=document.createElement('div');
-  row.className=`msg-row ${sender}`;
+  const row=document.createElement('div'); row.className=`msg-row ${sender}`;
   const time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  const meta=document.createElement('div');
-  meta.className='msg-meta';
+  const meta=document.createElement('div'); meta.className='msg-meta';
   meta.textContent=sender==='user'?`you · ${time}`:`rexy · ${time}`;
-  const bubble=document.createElement('div');
-  bubble.className='bubble';
+  const bubble=document.createElement('div'); bubble.className='bubble';
   bubble.textContent=text;
-  row.appendChild(meta); row.appendChild(bubble);
+  if(sender==='rexy'){
+    const wrap=document.createElement('div'); wrap.className='rexy-msg-wrap';
+    const dot=document.createElement('div'); dot.className='rexy-avatar';
+    wrap.appendChild(dot); wrap.appendChild(bubble);
+    row.appendChild(meta); row.appendChild(wrap);
+  } else {
+    row.appendChild(meta); row.appendChild(bubble);
+  }
   chatPanel.insertBefore(row,thinkingRow);
   chatPanel.scrollTop=chatPanel.scrollHeight;
 }
 
-// WebSocket
 const ws=new WebSocket('ws://localhost:8000/ws');
-ws.onopen=()=>{
-  document.getElementById('status-text').textContent='ONLINE';
-};
+ws.onopen=()=>{document.getElementById('status-text').textContent='ONLINE';};
 ws.onclose=()=>{
   const dot=document.getElementById('status-dot');
   dot.style.background='#f43f5e'; dot.style.boxShadow='0 0 8px #f43f5e';
   document.getElementById('status-text').textContent='OFFLINE';
+  setRobot('rexy-error');
 };
 
 let msgCooldown=0;
@@ -948,52 +602,79 @@ ws.onmessage=(event)=>{
   const data=JSON.parse(event.data);
   if(data.reply!==undefined){
     setThinking(false);
-    uiState='responding'; stateTime=0;
-    robot.baseY-=10; setTimeout(()=>robot.baseY+=10,350);
+    isProcessing=false;
+    // Auto pick robot state from pipeline emotion, fallback to speaking
+    const emotion=data.emotion?data.emotion.toLowerCase().trim():null;
+    const robotState=EMOTION_MAP[emotion]||'rexy-speaking';
+    setRobot(robotState);
     addMessage('rexy',data.reply);
-    if(data.emotion)setMood(data.emotion);
+    // Hold expressive states longer before returning to idle
+    const holdTime=robotState==='rexy-happy'?3500:robotState==='rexy-sad'?4000:2500;
+    setTimeout(()=>setRobot('rexy-idle'),holdTime);
     if(data.intent&&data.intent!=='CHAT'&&data.intent!=='GREET')showPlugin(data.intent);
   }
 };
 
 async function handleChat(){
-  const text=msgInput.value.trim();
-  if(!text)return;
-  addMessage('user',text);
-  setThinking(true);
-  uiState='listening'; stateTime=0;
-  ws.send(JSON.stringify({message:text}));
-  msgInput.value='';
+  const text=msgInput.value.trim(); if(!text)return;
+  isProcessing=true;
+  clearTimeout(typingTimer);
+  addMessage('user',text); setThinking(true);
+  ws.send(JSON.stringify({message:text})); msgInput.value='';
 }
 
 function inspireMe(){
   addMessage('rexy','✨ Inspiration mode — coming soon!');
-  setMood('happy');
+  setRobot('rexy-happy');
+  setTimeout(()=>setRobot('rexy-idle'),2500);
 }
 
 msgInput.addEventListener('keypress',e=>{if(e.key==='Enter')handleChat();});
-msgInput.addEventListener('focus',()=>{
-  uiState='listening'; stateTransition=0;
-  robot.eyes.left.targetX=5; robot.eyes.right.targetX=25;
-});
-msgInput.addEventListener('blur',()=>{if(!isThinking)uiState='idle';});
-
-// ── Shortcut: / to focus, Escape to blur ──
-document.addEventListener('keydown',(e)=>{
+document.addEventListener('keydown',e=>{
   if(e.key==='/'&&document.activeElement!==msgInput){
-    e.preventDefault();
-    msgInput.focus();
-    inputBar.classList.remove('flash');
-    void inputBar.offsetWidth;
+    e.preventDefault(); msgInput.focus();
+    inputBar.classList.remove('flash'); void inputBar.offsetWidth;
     inputBar.classList.add('flash');
     setTimeout(()=>inputBar.classList.remove('flash'),500);
   }
   if(e.key==='Escape'&&document.activeElement===msgInput)msgInput.blur();
 });
 
-// ── Start ──
-setMood('neutral');
-drawRobot();
+// ── Listening state: Rexy watches you type ──
+let typingTimer = null;
+let isProcessing = false;
+
+msgInput.addEventListener('input', () => {
+  if(isProcessing) return;
+  if(msgInput.value.trim().length > 0) {
+    setRobot('rexy-listening');
+    clearTimeout(typingTimer);
+    // If user stops typing for 2.5s, drift back to idle
+    typingTimer = setTimeout(() => {
+      if(!isProcessing) setRobot('rexy-idle');
+    }, 2500);
+  } else {
+    clearTimeout(typingTimer);
+    if(!isProcessing) setRobot('rexy-idle');
+  }
+});
+
+// Clear listening when input is cleared/blurred empty
+msgInput.addEventListener('blur', () => {
+  clearTimeout(typingTimer);
+  if(!isProcessing && msgInput.value.trim().length === 0)
+    setRobot('rexy-idle');
+});
+
+
+// ── Star pulse reacts to typing ──
+const inputStar = document.getElementById('input-star');
+msgInput.addEventListener('input', () => {
+  inputStar.classList.toggle('active', msgInput.value.length > 0);
+});
+msgInput.addEventListener('blur', () => {
+  inputStar.classList.remove('active');
+});
 </script>
 </body>
 </html>

@@ -209,16 +209,18 @@ class MemoryPlugin(RexyPlugin):
     # FORGET SPECIFIC
     # ─────────────────────────────────────────────
     def _forget(self, topic: str) -> Dict[str, Any]:
-        """Delete memories matching the topic."""
-        topic_lower = topic.lower().strip()
-        deleted = []
+        """Delete memories matching the topic. Supports 'forget X and Y'."""
+        # Split on ' and ' to handle multiple topics at once
+        topics = [t.strip() for t in re.split(r'\s+and\s+', topic.lower())]
+        
+        all_deleted = []
+        for topic_lower in topics:
+            for key in list(self._memories.keys()):
+                if topic_lower in key.lower() or topic_lower in self._memories[key]["value"].lower():
+                    del self._memories[key]
+                    all_deleted.append(key)
 
-        for key in list(self._memories.keys()):
-            if topic_lower in key.lower() or topic_lower in self._memories[key]["value"].lower():
-                del self._memories[key]
-                deleted.append(key)
-
-        if not deleted:
+        if not all_deleted:
             return {
                 "reply": f"🧠 I don't have any memories about '{topic}' to forget.",
                 "emotion": "neutral",
@@ -226,9 +228,9 @@ class MemoryPlugin(RexyPlugin):
             }
 
         self._save_memories()
-        logger.info(f"Memory forgotten: {deleted}")
+        logger.info(f"Memory forgotten: {all_deleted}")
         return {
-            "reply": f"🧠 Forgotten! Removed {len(deleted)} memory/memories about '{topic}'.",
+            "reply": f"🧠 Forgotten! Removed {len(all_deleted)} memory/memories.",
             "emotion": "neutral",
             "state": "speaking"
         }
@@ -292,8 +294,11 @@ class MemoryPlugin(RexyPlugin):
             "that", "this", "it", "i", "me", "be", "been", "being",
             "have", "has", "had", "do", "does", "did", "will", "would",
             "could", "should", "and", "or", "but", "in", "at", "to",
-            "for", "of", "with", "by"
+            "for", "of", "with", "by", "ya", "yep", "yeah", "thats",
+            "just", "like", "so", "too", "also", "want", "wanted",
+            "gonna", "gotta", "btw", "its", "its", "im", "ive", "ill"
         }
+        
         words = re.findall(r'[a-zA-Z]+', content.lower())
         meaningful = [w for w in words if w not in stopwords and len(w) > 2]
 
