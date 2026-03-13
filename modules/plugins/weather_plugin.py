@@ -101,12 +101,14 @@ class WeatherPlugin(RexyPlugin):
         ]
 
     # ── Main execute method ──
-    def execute(self, message: str, emotion: str, state: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, message: str, emotion: str, state: Dict[str, Any], args: Dict[str, Any] = {}) -> Dict[str, Any]:
         """
         Extract city from message, fetch weather, return formatted reply.
         Falls back to last known city, then asks user if no city found.
         """
-        city = self._extract_city(message)
+        city = args.get("city", "").strip()
+        if not city:
+            city = self._extract_city(message)
 
         # No city in message → try last known city from state
         if not city:

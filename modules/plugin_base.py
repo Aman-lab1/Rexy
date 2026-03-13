@@ -63,7 +63,7 @@ class RexyPlugin(ABC):
         pass
 
     @abstractmethod
-    def execute(self, message: str, emotion: str, state: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, message: str, emotion: str, state: Dict[str, Any], args: Dict[str, Any] = {}) -> Dict[str, Any]:
         """
         Run the plugin and return a response.
 
@@ -71,6 +71,9 @@ class RexyPlugin(ABC):
             message: Raw user message
             emotion: Detected emotion string
             state:   Global STATE dict (read/write carefully)
+            args:    Structured arguments extracted by Tool Intelligence
+                    e.g. {"city": "Tokyo"} for weather
+                    Empty dict if no args were extracted (old behaviour)
 
         Returns:
             Dict with keys:

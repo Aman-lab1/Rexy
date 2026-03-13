@@ -46,7 +46,7 @@ class SystemInfoPlugin(RexyPlugin):
         ]
 
     # ── Main execute ──
-    def execute(self, message: str, emotion: str, state: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, message: str, emotion: str, state: Dict[str, Any], args: Dict[str, Any] = {}) -> Dict[str, Any]:
         """Detect what the user wants and return the relevant stat."""
         try:
             import psutil

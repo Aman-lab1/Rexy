@@ -50,7 +50,7 @@ class WebSearchPlugin(RexyPlugin):
         ]
 
     # ── Main execute ──
-    def execute(self, message: str, emotion: str, state: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, message: str, emotion: str, state: Dict[str, Any], args: Dict[str, Any] = {}) -> Dict[str, Any]:
         """Extract query, search DuckDuckGo, return formatted result."""
         query = self._extract_query(message)
 

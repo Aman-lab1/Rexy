@@ -73,7 +73,7 @@ class MemoryPlugin(RexyPlugin):
         ]
 
     # ── Main execute ──
-    def execute(self, message: str, emotion: str, state: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, message: str, emotion: str, state: Dict[str, Any], args: Dict[str, Any] = {}) -> Dict[str, Any]:
         """
         Detect whether user wants to SAVE, RECALL, FORGET, or LIST memories.
         Routes to the right handler.

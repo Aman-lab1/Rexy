@@ -216,8 +216,33 @@ Format (exact):
 {
   "intent": "ONE_OF_THE_VALID_INTENTS",
   "emotion": "happy|sad|anxious|neutral|thinking|bored|excited",
-  "confidence": 0.95
+  "confidence": 0.95,
+  "args": {}
 }
+
+The "args" field contains structured arguments extracted from the message.
+
+- WEATHER    → {"city": "city name"}
+              e.g. "do I need an umbrella in Tokyo?" → {"city": "Tokyo"}
+              e.g. "weather" (no city mentioned) → {}
+
+- WEB_SEARCH → {"query": "search query"}
+              e.g. "search latest AI news" → {"query": "latest AI news"}
+
+- FILE_READ  → {"filename": "filename if mentioned"}
+              e.g. "read notes.txt" → {"filename": "notes.txt"}
+              e.g. "show inbox files" → {}
+
+- MEMORY     → {"action": "save|recall|forget|list", "topic": "topic if any", "content": "content if saving"}
+              e.g. "remember my exam is March 20" → {"action": "save", "topic": "exam", "content": "exam is March 20"}
+              e.g. "what do you remember about my sister" → {"action": "recall", "topic": "sister"}
+              e.g. "forget about my exam" → {"action": "forget", "topic": "exam"}
+              e.g. "show everything you remember" → {"action": "list"}
+
+- All other intents → {}
+
+If you cannot extract a clean argument, leave args as {}.
+Never guess — empty is safer than wrong.
 
 Valid intents (check in this STRICT priority order):
 
@@ -298,6 +323,7 @@ STRICT RULES:
 - SYSTEM_INFO always beats MEMORY when the topic is hardware/RAM/storage
 - WEATHER always beats WEB_SEARCH when the topic is weather"""
 
+
     @staticmethod
     def detect(message: str, history: List[Dict]) -> Dict[str, Any]:
         """
@@ -312,45 +338,44 @@ STRICT RULES:
         # ── PRE-CHECK 1: Math expression (digits + operators) ──
         # Catches "10+5", "3 * 4", "100 - 50 / 2" etc.
         if re.search(r'\d[\d\s]*[\+\-\*\/][\d\s]*\d', message_lower):
-            return {"intent": "CALCULATOR", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH"}
+            return {"intent": "CALCULATOR", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
 
         # ── PRE-CHECK 2: calc/calculate keyword ──
         if re.search(r'\b(calc|calculate)\b', message_lower):
-            return {"intent": "CALCULATOR", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH"}
+            return {"intent": "CALCULATOR", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
 
         # ── PRE-CHECK 3: Explicit search trigger ──
         # "search X", "look up X", "google X" → always WEB_SEARCH
         if re.search(r'^\s*(search|look\s*up|google)\b', message_lower):
-            return {"intent": "WEB_SEARCH", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH"}
+            return {"intent": "WEB_SEARCH", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
 
         # ── PRE-CHECK 4: Inbox → FILE_READ ──
         if re.search(r'\binbox\b', message_lower):
-            return {"intent": "FILE_READ", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH"}
+            return {"intent": "FILE_READ", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
 
         # ── PRE-CHECK 5: "memory usage" → SYSTEM_INFO (hardware, not memory plugin) ──
         if re.search(r'\bmemory\s+usage\b', message_lower):
-            return {"intent": "SYSTEM_INFO", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH"}
+            return {"intent": "SYSTEM_INFO", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
 
         # ── PRE-CHECK 6: "what time is it in X" → CHAT (timezone question, not local time) ──
         # Must come BEFORE the general GET_TIME check
         if re.search(r'\bwhat time is it\s+in\s+\w+', message_lower):
-            return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH"}
-
+            return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
         # ── PRE-CHECK 7: "what time is it" → GET_TIME (local time) ──
         if re.search(r'\bwhat time is it\b', message_lower):
-            return {"intent": "GET_TIME", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH"}
+            return {"intent": "GET_TIME", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
 
         # ── PRE-CHECK 8: Weather keywords ──
         if re.search(r'\b(weather|temperature|forecast|is it raining)\b', message_lower):
-            return {"intent": "WEATHER", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH"}
+            return {"intent": "WEATHER", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
 
         # ── PRE-CHECK 9: Explicit memory phrases ──
         if re.search(r'\b(remember that|remind me|don\'t forget|what do you remember|forget about)\b', message_lower):
-            return {"intent": "MEMORY", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH"}
-        
+            return {"intent": "MEMORY", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
+
         # ── PRE-CHECK 10: State/mode commands → CHAT (not MEMORY) ──
         if re.search(r'\b(go to|switch to|set|enter)\b.{0,20}\b(state|mode)\b', message_lower):
-            return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH"}
+            return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
 
         # ── LLM DETECTION (Ollama) ──
         # Only runs if no pre-check matched above
@@ -385,27 +410,32 @@ STRICT RULES:
                     "intent": "CHAT",
                     "emotion": "neutral",
                     "confidence": 0.3,
-                    "reliability": "MALFORMED_INTENT"
+                    "reliability": "MALFORMED_INTENT",
+                    "args": {}   # ← add this   
                 }
 
             emotion    = result.get("emotion", "neutral")
             confidence = max(0.0, min(1.0, float(result.get("confidence", 0.5))))
             reliability = "HIGH" if confidence >= CONFIDENCE_THRESHOLD else "LOW"
+            args       = result.get("args", {})  # ← ADD THIS
+            if not isinstance(args, dict):       # ← safety check
+                args = {}
 
             return {
                 "intent":      intent,
                 "emotion":     emotion,
                 "confidence":  confidence,
-                "reliability": reliability
+                "reliability": reliability,
+                "args":        args           # ← ADD THIS
             }
 
         except json.JSONDecodeError as e:
             logger.warning(f"IntentDetector JSON parse error: {e}")
-            return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.2, "reliability": "JSON_ERROR"}
+            return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.2, "reliability": "JSON_ERROR", "args": {}}
 
         except Exception as e:
             logger.warning(f"IntentDetector Ollama error: {e}")
-            return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.1, "reliability": f"EXCEPTION:{str(e)[:30]}"}
+            return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.1, "reliability": f"EXCEPTION:{str(e)[:30]}", "args": {}}
 
 # =============================================================================
 # 🔍 VERIFY — SAFETY VERIFIER
@@ -479,7 +509,7 @@ class ExecutionEngine:
     """
 
     @staticmethod
-    def execute(intent: str, message: str, emotion: str, state: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(intent: str, message: str, emotion: str, state: Dict[str, Any], args: Dict[str, Any] = {}) -> Dict[str, Any]:
         """
         Execute the appropriate handler for the given intent.
         Returns: {"reply": str, "emotion": str, "state": str}
@@ -621,7 +651,7 @@ class ExecutionEngine:
 
         # ── FALLBACK (shouldn't reach here normally) ──
         if PLUGIN_MANAGER.has(intent):
-            return PLUGIN_MANAGER.execute(intent, message, emotion, state)
+            return PLUGIN_MANAGER.execute(intent, message, emotion, state, args)
 
         logger.warning(f"ExecutionEngine received unknown intent: {intent}")
         return {
@@ -755,7 +785,8 @@ async def process_message(message: str) -> Dict[str, Any]:
                     "(e.g. say 'calc 10+5' for math, 'what time is it', or just chat!)"
                 ),
                 "emotion": "neutral",
-                "state": "speaking"
+                "state": "speaking",
+                "intent": "CHAT"   # ← add to early returns
             }
 
         # ── Handle REJECT ──
@@ -772,7 +803,8 @@ async def process_message(message: str) -> Dict[str, Any]:
             intent_data["intent"],
             message,
             intent_data["emotion"],
-            STATE
+            STATE,
+            intent_data.get("args", {})
         )
         logger.info(f"EXECUTE | {intent_data['intent']} → '{result['reply'][:60]}'")
         emit("EXECUTION_RESULT", {
@@ -876,6 +908,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 "reply":   result["reply"],
                 "emotion": result["emotion"],
                 "state":   result["state"],
+                "intent":  result.get("intent", "CHAT"),   # ← safer
                 "turn_id": STATE["turn_id"]
             }
 

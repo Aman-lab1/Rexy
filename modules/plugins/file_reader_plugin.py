@@ -58,7 +58,7 @@ class FileReaderPlugin(RexyPlugin):
         ]
 
     # ── Main execute ──
-    def execute(self, message: str, emotion: str, state: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, message: str, emotion: str, state: Dict[str, Any], args: Dict[str, Any] = {}) -> Dict[str, Any]:
         """Figure out what file the user wants and read it."""
 
         # Ensure inbox folder exists

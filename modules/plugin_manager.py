@@ -103,7 +103,7 @@ class PluginManager:
         """Check if a plugin exists for the given intent."""
         return intent.upper() in self._plugins
 
-    def execute(self, intent: str, message: str, emotion: str, state: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, intent: str, message: str, emotion: str, state: Dict[str, Any], args: Dict[str, Any] = {}) -> Dict[str, Any]:
         """
         Run the plugin for the given intent.
         Returns a standard result dict: {"reply", "emotion", "state"}
@@ -117,7 +117,7 @@ class PluginManager:
                 "state": "speaking"
             }
         try:
-            return plugin.execute(message, emotion, state)
+            return plugin.execute(message, emotion, state, args)
         except Exception as e:
             logger.error(f"Plugin '{intent}' crashed: {e}")
             return {
