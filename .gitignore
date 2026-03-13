@@ -6,3 +6,6 @@ identity.json
 memories.json
 rexy_inbox/
 logs/
+__pycache__/
+*.pyc
+logs/

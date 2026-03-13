@@ -24,6 +24,7 @@ from fastapi.responses import HTMLResponse
 from observer import emit
 from modules.calculator import CalculatorHandler
 from modules.chat_intent import ChatHandler
+from modules.react_engine import ReActEngine
 from modules.plugin_manager import PluginManager
 import io
 
@@ -806,6 +807,11 @@ async def process_message(message: str) -> Dict[str, Any]:
             STATE,
             intent_data.get("args", {})
         )
+        # ── STEP 3.5: ReAct — interpret if advice question ──
+        if ReActEngine.needs_react(message, intent_data["intent"]):
+            logger.info(f"ReAct | TRIGGERED | intent={intent_data['intent']}")
+            result = ReActEngine.run(message, intent_data["intent"], result)
+            
         logger.info(f"EXECUTE | {intent_data['intent']} → '{result['reply'][:60]}'")
         emit("EXECUTION_RESULT", {
             "intent": intent_data["intent"],
