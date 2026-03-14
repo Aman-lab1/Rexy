@@ -15,7 +15,7 @@ Author: Aman (EEE @ Ahmedabad University)
 
 import json
 import logging
-import ollama
+import groq_client
 from typing import Any, Dict
 
 logger = logging.getLogger("rexy.react")
@@ -91,8 +91,7 @@ class ReActEngine:
 
     Respond ONLY with a short reasoning in 2-3 sentences. No answer yet."""
 
-            thought_response = ollama.chat(
-                model='llama3.2',
+            thought = groq_client.chat(
                 messages=[
                     {
                         "role": "system",
@@ -104,9 +103,10 @@ class ReActEngine:
                     },
                     {"role": "user", "content": thought_prompt}
                 ],
-                options={"temperature": 0.2}  # Low temp = focused reasoning
+                temperature=0.2
             )
-            thought = thought_response['message']['content'].strip()
+            if thought is None:
+                raise Exception("Groq returned None for thought")
             logger.info(f"ReAct | THOUGHT | '{thought[:80]}'")
 
             # ── STAGE 2: ANSWER ──
@@ -123,8 +123,7 @@ class ReActEngine:
     Be conversational and helpful. Give a clear recommendation if they asked for one.
     2-3 sentences max. Never repeat raw numbers unless they matter to the answer."""
 
-            answer_response = ollama.chat(
-                model='llama3.2',
+            interpreted = groq_client.chat(
                 messages=[
                     {
                         "role": "system",
@@ -137,10 +136,10 @@ class ReActEngine:
                     },
                     {"role": "user", "content": answer_prompt}
                 ],
-                options={"temperature": 0.4}
+                temperature=0.4
             )
-
-            interpreted = answer_response['message']['content'].strip()
+            if interpreted is None:
+                raise Exception("Groq returned None for answer")
             logger.info(f"ReAct | ANSWER | '{interpreted[:60]}'")
 
             return {
