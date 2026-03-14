@@ -150,8 +150,24 @@ class FileReaderPlugin(RexyPlugin):
         Find and read the file from rexy_inbox/.
         Tries exact match first, then fuzzy match (ignoring extension).
         """
+        # 🔒 Strip any directory components before building the path
+        # Prevents: "../../etc/passwd" style attacks
+        filename = os.path.basename(filename)
+
+        inbox_resolved = os.path.realpath(INBOX_DIR)
+
         # Exact match
         exact_path = os.path.join(INBOX_DIR, filename)
+
+        # 🔒 Resolve symlinks + ../ tricks, then verify it's inside inbox
+        resolved = os.path.realpath(exact_path)
+        if not resolved.startswith(inbox_resolved + os.sep):
+            return {
+                "reply": "❌ Access denied. Files must be inside the rexy_inbox folder.",
+                "emotion": "neutral",
+                "state": "speaking"
+            }
+
         if os.path.exists(exact_path):
             return self._parse_and_reply(exact_path, filename)
 
@@ -164,8 +180,14 @@ class FileReaderPlugin(RexyPlugin):
 
         for f in all_files:
             if os.path.splitext(f)[0].lower() == name_no_ext:
-                path = os.path.join(INBOX_DIR, f)
-                return self._parse_and_reply(path, f)
+                fuzzy_path = os.path.join(INBOX_DIR, f)
+
+                # 🔒 Re-check every fuzzy match too — don't skip this
+                fuzzy_resolved = os.path.realpath(fuzzy_path)
+                if not fuzzy_resolved.startswith(inbox_resolved + os.sep):
+                    continue  # Skip suspicious match, keep looking
+
+                return self._parse_and_reply(fuzzy_path, f)
 
         # Still not found
         return {

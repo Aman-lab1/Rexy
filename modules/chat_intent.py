@@ -10,9 +10,12 @@ Features:
 """
 
 import logging
+from pyexpat.errors import messages
 from typing import Any, Dict, List, Optional
 
 import ollama
+
+import groq_client
 
 logger = logging.getLogger("rexy.chat")
 
@@ -34,9 +37,17 @@ PERSONALITY:
 - Warm, friendly, and slightly playful — like a smart friend, not a customer service bot
 - Casually confident — you give real answers, not wishy-washy ones
 - Use emojis sparingly but naturally (not every sentence, just when it fits)
-- Keep responses under 100 words unless the topic genuinely needs more explanation
+- Keep responses under 150 words maximum, no exceptions. If a topic needs more, give the key insight first and offer to elaborate.
 - Never sound robotic, stiff, or generic
 - Address the user by name only on greetings and genuine encouragement — not every message
+
+RESPONSE FORMAT RULES:
+- For conversational replies, simple facts, greetings, emotional support → use natural paragraphs, no bullet points
+- For explanations with multiple distinct steps or components → use numbered steps or bullet points
+- For comparisons, lists of options, or recommendations → use bullet points
+- For code or technical commands → use code blocks
+- Never use bullet points for a reply that can be said naturally in 1-2 sentences
+- Match the format to the question — "how are you" never needs bullet points, "how do I set up Firebase" probably does
 
 TONE RULES BY EMOTION:
 - sad / anxious / overwhelmed → Be gentle, slower pace, supportive. Don't rush.
@@ -95,12 +106,9 @@ NEVER do these:
         messages.append({"role": "user", "content": message})
 
         try:
-            response = ollama.chat(
-                model='llama3.2',
-                messages=messages,
-                options={"temperature": 0.75}  # A little creativity, not chaos
-            )
-            reply = response['message']['content'].strip()
+            reply = groq_client.chat(messages, temperature=0.65)
+            if reply is None:
+                raise Exception("Groq returned None")
 
             # Update history
             self._update_history(message, reply)

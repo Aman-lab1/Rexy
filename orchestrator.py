@@ -9,22 +9,26 @@ Author: Aman (EEE @ Ahmedabad University)
 # ─────────────────────────────────────────────
 # IMPORTS
 # ─────────────────────────────────────────────
-import asyncio, json, logging, os, re, subprocess, sys, tempfile, threading
+from email import message
+import asyncio, json, logging, os, re, sys
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from enum import Enum
-
-import ollama
-import pygame
-import uvicorn
 from dotenv import load_dotenv
+import groq_client
+import supabase_db
+
+import uvicorn
+import firebase_auth
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
+from config import validate as validate_config
 
 from observer import emit
 from modules.calculator import CalculatorHandler
 from modules.chat_intent import ChatHandler
 from modules.react_engine import ReActEngine
+from rate_limiter import RateLimiter
 from modules.plugin_manager import PluginManager
 import io
 
@@ -37,7 +41,6 @@ if isinstance(sys.stderr, io.TextIOWrapper):
     sys.stderr.reconfigure(encoding='utf-8')
 
 # Initialize pygame audio mixer for TTS playback
-pygame.mixer.init(frequency=22050, size=-16, channels=1, buffer=512)
 
 # ─────────────────────────────────────────────
 # LOGGING SETUP
@@ -55,10 +58,13 @@ logger = logging.getLogger("rexy.orchestrator")
 # ─────────────────────────────────────────────
 # CONSTANTS
 # ─────────────────────────────────────────────
-CONFIDENCE_THRESHOLD = 0.75      # Below this → CLARIFY
-HIGH_RISK_THRESHOLD  = 0.90      # For risky intents (future use)
-CHAT_HISTORY_LIMIT   = 12        # Max turns in session memory
-EMOTION_HISTORY_LIMIT = 5        # Max emotions to keep
+from config import (
+    CONFIDENCE_THRESHOLD,
+    HIGH_RISK_THRESHOLD,
+    CHAT_HISTORY_LIMIT,
+    EMOTION_HISTORY_LIMIT,
+    RATE_LIMIT_PER_MINUTE,
+)
 
 # Valid intents Rexy understands
 VALID_INTENTS = {
@@ -86,31 +92,54 @@ INTENT_RISK = {
 # 🧠 GLOBAL STATE
 # Central nervous system of Rexy. Do not mutate from outside orchestrator.
 # =============================================================================
-STATE: Dict[str, Any] = {
-    "turn_id": 0,
+# ── Per-user sessions — one STATE per connected uid ──
+SESSIONS: Dict[str, Any] = {}
 
-    "intent": {
-        "mode": "chat",        # current mode: "chat" | "calculator"
-        "last_result": None,   # last calculator result (for chaining)
-        "last_intent": None    # what happened on the previous turn
-    },
+def create_session(uid: str) -> Dict[str, Any]:
+    """
+    Create a fresh state dict for a user.
+    Called when a user connects for the first time in this server run.
+    """
+    return {
+        "uid":     uid,
+        "turn_id": 0,
 
-    "memory": {
-        "emotions": [],        # last 5 emotions: [{"type", "turn", "intent"}]
-        "chat_history": [],    # last 12 messages sent to Ollama
-        "context_lock": None   # which module "owns" the context right now
-    },
+        "intent": {
+            "mode":        "chat",
+            "last_result": None,
+            "last_intent": None
+        },
 
-    "identity": {
-        "name": None,
-        "preferred_address": None,
-        "response_style": None,       # "concise" | "verbose" | "adaptive"
-        "challenge_preference": None
-    },
+        "memory": {
+            "emotions":     [],
+            "chat_history": [],
+            "context_lock": None
+        },
 
-    "pending": None,          # active pending-state flow (name confirm, etc.)
-    "chat_handler": None      # lazy-loaded ChatHandler instance
-}
+        "identity": {
+            "name":                 None,
+            "preferred_address":    None,
+            "response_style":       None,
+            "challenge_preference": None
+        },
+
+        "pending":      None,
+        "chat_handler": None
+    }
+
+def get_session(uid: str) -> Dict[str, Any]:
+    """
+    Get existing session or create a new one for this uid.
+    Loads identity from Supabase on first access.
+    """
+    if uid not in SESSIONS:
+        SESSIONS[uid] = create_session(uid)
+        # Load identity from Supabase if available
+        user_data = supabase_db.get_user_data(uid)
+        if user_data and user_data.get("identity"):
+            SESSIONS[uid]["identity"].update(user_data["identity"])
+            logger.info(f"Identity loaded from Supabase for uid: {uid}")
+    return SESSIONS[uid]
 
 # =============================================================================
 # 💾 IDENTITY MEMORY
@@ -119,85 +148,47 @@ STATE: Dict[str, Any] = {
 IDENTITY_FILE = "identity.json"
 
 def load_identity() -> None:
-    """Load persisted identity from disk into STATE on startup."""
+    """
+    Load identity from disk into a temporary global on startup.
+    Only used as fallback when Supabase is unavailable.
+    """
     try:
         if os.path.exists(IDENTITY_FILE):
             with open(IDENTITY_FILE, 'r') as f:
                 data = json.load(f)
-                STATE["identity"].update(data)
-            logger.info("Identity loaded from disk.")
+            logger.info("Identity loaded from disk (fallback).")
     except Exception as e:
-        logger.warning(f"Identity load failed (starting fresh): {e}")
+        logger.warning(f"Identity load failed: {e}")
 
-def save_identity() -> None:
-    """Write current identity to disk. Called only when something changes."""
+def save_identity(uid: str, state: Dict[str, Any]) -> None:
+    """Save identity to Supabase for this user."""
     try:
-        with open(IDENTITY_FILE, 'w') as f:
-            json.dump(STATE["identity"], f, indent=2)
+        supabase_db.save_identity(uid, state["identity"])
     except Exception as e:
-        logger.warning(f"Identity save failed: {e}")
+        logger.warning(f"Identity save failed for uid '{uid}': {e}")
 
-def update_identity(**kwargs) -> None:
+def update_identity(uid: str, state: Dict[str, Any], **kwargs) -> None:
     """
-    Update identity fields. Only saves if at least one field actually changed.
-    Accepted kwargs: name, preferred_address, response_style, challenge_preference
+    Update identity fields for a specific user.
+    Saves to Supabase only if something changed.
     """
     updated = False
     for key, value in kwargs.items():
-        if key in STATE["identity"] and value is not None:
-            STATE["identity"][key] = value
+        if key in state["identity"] and value is not None:
+            state["identity"][key] = value
             updated = True
     if updated:
-        save_identity()
+        save_identity(uid, state)
 
-def get_name() -> Optional[str]:
-    """Read-only access to the user's remembered name."""
-    return STATE["identity"].get("name")
+def get_name(state: Dict[str, Any]) -> Optional[str]:
+    """Read name from this user's state."""
+    return state["identity"].get("name")
 
 # =============================================================================
 # 🔊 TTS — NON-BLOCKING TEXT-TO-SPEECH
 # Runs in a daemon thread so it never blocks the async pipeline.
 # =============================================================================
-def speak_async(text: str) -> None:
-    """
-    Convert text to speech using Piper TTS and play via pygame.
-    Runs in background thread. Never crashes Rexy if something goes wrong.
-    Windows note: must wait for pygame to finish before deleting the temp file.
-    """
-    def _piper_speak():
-        filename = tempfile.mktemp(suffix=".wav")
-        try:
-            cmd = [
-                "piper", "--model", "voices/en_US-lessac-medium.onnx",
-                "--output_file", filename,
-                "--length_scale", "1.2",
-                "--noise_scale", "0.4",
-                "--noise_w", "0.1"
-            ]
-            subprocess.run(
-                cmd,
-                input=text.encode("utf-8"),
-                timeout=8,
-                capture_output=True
-            ).check_returncode()
-
-            pygame.mixer.music.load(filename)
-            pygame.mixer.music.play()
-
-            # ⚠️ Windows file lock fix: wait for playback before unlinking
-            while pygame.mixer.music.get_busy():
-                pygame.time.wait(100)
-
-        except Exception as e:
-            logger.debug(f"TTS failed (non-critical): {e}")
-        finally:
-            try:
-                if os.path.exists(filename):
-                    os.unlink(filename)
-            except Exception:
-                pass  # If unlink fails, not a crisis
-
-    threading.Thread(target=_piper_speak, daemon=True).start()
+# NOT NOW
 
 # =============================================================================
 # 🧠 THINK — INTENT DETECTOR
@@ -382,8 +373,7 @@ STRICT RULES:
         # Only runs if no pre-check matched above
         try:
             recent_history = history[-2:] if history else []
-            response = ollama.chat(
-                model='llama3.2',
+            raw = groq_client.chat(
                 messages=[
                     {"role": "system", "content": IntentDetector.SYSTEM_PROMPT},
                     {
@@ -394,10 +384,10 @@ STRICT RULES:
                         )
                     }
                 ],
-                options={"temperature": 0.1}  # Low temp = consistent classification
+                temperature=0.1
             )
-
-            raw = response['message']['content'].strip()
+            if raw is None:
+                raise Exception("Groq returned None")
 
             # Strip markdown fences if Ollama adds them (it sometimes does)
             raw = re.sub(r'```(?:json)?', '', raw).strip()
@@ -433,9 +423,9 @@ STRICT RULES:
         except json.JSONDecodeError as e:
             logger.warning(f"IntentDetector JSON parse error: {e}")
             return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.2, "reliability": "JSON_ERROR", "args": {}}
-
+  
         except Exception as e:
-            logger.warning(f"IntentDetector Ollama error: {e}")
+            logger.warning(f"IntentDetector Groq error: {e}")
             return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.1, "reliability": f"EXCEPTION:{str(e)[:30]}", "args": {}}
 
 # =============================================================================
@@ -543,7 +533,7 @@ class ExecutionEngine:
         # ── PRIORITY 3: LIST_FILES ──
         if intent == "LIST_FILES":
             try:
-                files = os.listdir('.')
+                files = os.listdir('rexy_inbox')
                 visible = files[:10]
                 file_list = ', '.join(visible)
                 overflow  = f" (+{len(files) - 10} more)" if len(files) > 10 else ""
@@ -637,7 +627,7 @@ class ExecutionEngine:
             reply = state["chat_handler"].generate_response(message, emotion, intent)
 
             # Sparingly use name on greetings and genuine encouragement
-            name = get_name()
+            name = get_name(state)
             message_lower = message.lower()
             if name:
                 is_greeting = any(w in message_lower for w in ["hello", "hi", "hey", "good morning", "good evening"])
@@ -665,7 +655,7 @@ class ExecutionEngine:
 # 🎯 PENDING STATE MACHINE
 # Handles flows that span multiple turns (name confirm, etc.)
 # =============================================================================
-async def handle_pending(message: str, pending: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+async def handle_pending(message: str, pending: Dict[str, Any], state: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
     Process a message when there's an active pending state.
     Returns a result dict if the pending state handled the message, else None.
@@ -676,21 +666,21 @@ async def handle_pending(message: str, pending: Dict[str, Any]) -> Optional[Dict
     # ── Name confirmation flow ──
     if status == "awaiting_name_confirm":
         if any(w in message_lower for w in ["yes", "yeah", "yep", "confirm", "ok", "sure"]):
-            update_identity(name=pending["name"])
-            STATE["pending"] = None
+            update_identity(state["uid"], state, name=pending["name"])
+            state["pending"] = None
             return {
                 "reply": f"✅ Got it! I'll remember you as {pending['name']}. 😊",
                 "emotion": "happy",
                 "state": "speaking"
             }
         elif any(w in message_lower for w in ["no", "nope", "cancel", "nah"]):
-            STATE["pending"] = None
+            state["pending"] = None
             return {"reply": "No problem! 😊", "emotion": "neutral", "state": "speaking"}
         else:
             # Retry
             pending["retry_count"] += 1
             if pending["retry_count"] >= pending["max_retries"]:
-                STATE["pending"] = None
+                state["pending"] = None
                 return {
                     "reply": "No worries, skipping that for now.",
                     "emotion": "neutral",
@@ -704,29 +694,28 @@ async def handle_pending(message: str, pending: Dict[str, Any]) -> Optional[Dict
 
     # Unknown pending status — clear it and continue normally
     logger.warning(f"Unknown pending status '{status}', clearing.")
-    STATE["pending"] = None
+    state["pending"] = None
     return None
 
 # =============================================================================
 # 🎯 MAIN PIPELINE: process_message
 # THINK → VERIFY → EXECUTE, every single time.
 # =============================================================================
-async def process_message(message: str) -> Dict[str, Any]:
+async def process_message(message: str, state: Dict[str, Any]) -> Dict[str, Any]:
     """
     The full THINK → VERIFY → EXECUTE pipeline.
     This is the only path a message should travel through.
     Returns: {"reply", "emotion", "state"}
     """
-    global STATE
 
     try:
-        STATE["turn_id"] += 1
-        logger.info(f"TURN {STATE['turn_id']} | '{message[:60]}'")
+        state["turn_id"] += 1
+        logger.info(f"TURN {state['turn_id']} | '{message[:60]}'")
 
         # ── STEP 0: Check active pending state first ──
         # If we're waiting for a name confirmation etc., handle that before anything else.
-        if STATE.get("pending"):
-            pending_result = await handle_pending(message, STATE["pending"])
+        if state.get("pending"):
+            pending_result = await handle_pending(message, state["pending"], state)
             if pending_result:
                 return pending_result
             # If pending returned None, the pending state was cleared — continue normally
@@ -734,7 +723,7 @@ async def process_message(message: str) -> Dict[str, Any]:
         # ── STEP 0.5: CALCULATOR CHAIN MODE PRE-CHECK ──
         # If we're already in calculator mode, intercept before hitting Ollama.
         # Handles: "*10", "times 3", "divide by 2", "+ 50" etc.
-        if STATE["intent"].get("mode") == "calculator":
+        if state["intent"].get("mode") == "calculator":
             chain_triggers = re.search(
                 r'(\b(times|multiply|divide|plus|minus|add|subtract)\b|^[\+\-\*\/]\s*\d)',
                 message.lower().strip()
@@ -744,9 +733,9 @@ async def process_message(message: str) -> Dict[str, Any]:
             if chain_triggers or pure_op:
                 from modules.calculator import CalculatorHandler
                 calc   = CalculatorHandler()
-                result = calc.process(message, STATE)
-                STATE["intent"]["mode"]        = result.get("mode", "calculator")
-                STATE["intent"]["last_result"] = result.get("last_result")
+                result = calc.process(message, state)
+                state["intent"]["mode"]        = result.get("mode", "calculator")
+                state["intent"]["last_result"] = result.get("last_result")
                 return {
                     "reply":   result["reply"],
                     "emotion": "thinking",
@@ -754,7 +743,7 @@ async def process_message(message: str) -> Dict[str, Any]:
                 }
             
         # ── STEP 1: THINK — detect intent ──
-        intent_data = IntentDetector.detect(message, STATE["memory"]["chat_history"])
+        intent_data = IntentDetector.detect(message, state["memory"]["chat_history"])
         logger.info(
             f"THINK | intent={intent_data['intent']} | "
             f"confidence={intent_data['confidence']:.2f} | "
@@ -764,7 +753,7 @@ async def process_message(message: str) -> Dict[str, Any]:
             "intent":      intent_data["intent"],
             "confidence":  intent_data["confidence"],
             "reliability": intent_data["reliability"],
-            "turn":        STATE["turn_id"]
+            "turn":        state["turn_id"]
         })
 
         # ── STEP 2: VERIFY — safety check ──
@@ -773,7 +762,7 @@ async def process_message(message: str) -> Dict[str, Any]:
         emit("SAFETY_CHECK", {
             "decision": verification["decision"],
             "reason":   verification["reason"],
-            "turn":     STATE["turn_id"]
+            "turn":     state["turn_id"]
         })
 
         # ── Handle CLARIFY (ask user to rephrase, not yes/no) ──
@@ -804,7 +793,7 @@ async def process_message(message: str) -> Dict[str, Any]:
             intent_data["intent"],
             message,
             intent_data["emotion"],
-            STATE,
+            state,
             intent_data.get("args", {})
         )
         # ── STEP 3.5: ReAct — interpret if advice question ──
@@ -816,26 +805,26 @@ async def process_message(message: str) -> Dict[str, Any]:
         emit("EXECUTION_RESULT", {
             "intent": intent_data["intent"],
             "reply":  result["reply"][:80],
-            "turn":   STATE["turn_id"]
+            "turn":   state["turn_id"]
         })
 
         # ── STEP 4: Update memory (single write after execution) ──
         # Track emotion history
-        STATE["memory"]["emotions"].append({
+        state["memory"]["emotions"].append({
             "type":   result["emotion"],
-            "turn":   STATE["turn_id"],
+            "turn":   state["turn_id"],
             "intent": intent_data["intent"]
         })
-        STATE["memory"]["emotions"] = STATE["memory"]["emotions"][-EMOTION_HISTORY_LIMIT:]
+        state["memory"]["emotions"] = state["memory"]["emotions"][-EMOTION_HISTORY_LIMIT:]
 
         # Append to chat history for context on next turn
-        STATE["memory"]["chat_history"].extend([
+        state["memory"]["chat_history"].extend([
             {"role": "user",      "content": message},
             {"role": "assistant", "content": result["reply"]}
         ])
-        STATE["memory"]["chat_history"] = STATE["memory"]["chat_history"][-CHAT_HISTORY_LIMIT:]
+        state["memory"]["chat_history"] = state["memory"]["chat_history"][-CHAT_HISTORY_LIMIT:]
 
-        STATE["intent"]["last_intent"] = intent_data["intent"]
+        state["intent"]["last_intent"] = intent_data["intent"]
 
         return {
             "reply":   result["reply"],
@@ -845,14 +834,14 @@ async def process_message(message: str) -> Dict[str, Any]:
 
     except Exception as e:
         logger.critical(f"PIPELINE CRASH: {e}", exc_info=True)
-        return _safe_fallback(message)
-
-def _safe_fallback(message: str) -> Dict[str, Any]:
+        return _safe_fallback(message, state)
+    
+def _safe_fallback(message: str, state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Last-resort fallback. Clears any dangerous pending state.
     Rexy should NEVER crash — she just lands here instead.
     """
-    STATE["pending"] = None
+    state["pending"] = None
     logger.critical(f"SAFETY_FALLBACK triggered | message='{message[:50]}'")
     return {
         "reply": "🔒 Something went wrong on my end. Try: calc, time, files, or just chat!",
@@ -865,6 +854,11 @@ def _safe_fallback(message: str) -> Dict[str, Any]:
 # =============================================================================
 load_dotenv()
 load_identity()
+validate_config()
+firebase_auth.initialize()
+supabase_db.initialize()
+groq_client.initialize()  
+
 
 PLUGIN_MANAGER = PluginManager()
 PLUGIN_MANAGER.load_all()
@@ -892,11 +886,59 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     logger.info("WebSocket connected.")
 
-    # Reset session-specific state on new connection
-    STATE["intent"]["mode"]        = "chat"
-    STATE["intent"]["last_result"] = None
-    STATE["pending"]               = None
-    STATE["chat_handler"]          = None  # Fresh ChatHandler per session
+    # ── STEP 6: AUTH CHECK ──
+    # First message MUST be {"type": "auth", "token": "..."}
+    # If token is missing or invalid → close connection immediately
+    try:
+        auth_data = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
+        auth_payload = json.loads(auth_data)
+
+        if auth_payload.get("type") != "auth":
+            logger.warning("WebSocket rejected — first message was not auth.")
+            await websocket.close(code=1008)
+            return
+
+        token = auth_payload.get("token", "").strip()
+        decoded = firebase_auth.verify_token(token)
+
+        if decoded is None:
+            logger.warning("WebSocket rejected — invalid Firebase token.")
+            await websocket.send_text(json.dumps({
+                "reply":   "🔒 Authentication failed. Please sign in again.",
+                "emotion": "neutral",
+                "state":   "speaking",
+                "intent":  "CHAT",
+                "turn_id": 0
+            }))
+            await websocket.close(code=1008)
+            return
+
+        # Token valid — log who connected
+        uid   = decoded.get("uid", "unknown")
+        email = decoded.get("email", "unknown")
+        logger.info(f"WebSocket authenticated — uid: {uid} email: {email}")
+
+        user_data = supabase_db.get_or_create_user(uid, email)
+        logger.info(f"User data loaded — memories: {len(user_data.get('memories', {}))} items")
+        session = get_session(uid)
+
+    except asyncio.TimeoutError:
+        logger.warning("WebSocket rejected — auth token not received within 10s.")
+        await websocket.close(code=1008)
+        return
+    except Exception as e:
+        logger.warning(f"WebSocket auth error: {e}")
+        await websocket.close(code=1008)
+        return
+
+    # ── AUTH PASSED — normal session setup ──
+    session["intent"]["mode"]        = "chat"
+    session["intent"]["last_result"] = None
+    session["pending"]               = None
+    session["chat_handler"]          = None
+
+    # One rate limiter per connection
+    limiter = RateLimiter()
 
     try:
         while True:
@@ -907,23 +949,45 @@ async def websocket_endpoint(websocket: WebSocket):
             if not message:
                 continue
 
+            # ── INPUT SANITIZATION ──
+            if len(message) > 1000:
+                await websocket.send_text(json.dumps({
+                    "reply":   "⚠️ Message too long. Please keep it under 1000 characters.",
+                    "emotion": "neutral",
+                    "state":   "speaking",
+                    "intent":  "CHAT",
+                    "turn_id": session["turn_id"]
+                }))
+                continue
+
+            # ── RATE LIMIT CHECK ──
+            if not limiter.is_allowed():
+                await websocket.send_text(json.dumps({
+                    "reply":   f"⏳ Slow down! Max {limiter.limit} messages per minute. "
+                               f"Try again in a few seconds.",
+                    "emotion": "neutral",
+                    "state":   "speaking",
+                    "intent":  "CHAT",
+                    "turn_id": session["turn_id"]
+                }))
+                continue
+
             logger.info(f"USER: {message}")
-            result = await process_message(message)
+            result = await process_message(message, session)
 
             response = {
                 "reply":   result["reply"],
                 "emotion": result["emotion"],
                 "state":   result["state"],
-                "intent":  result.get("intent", "CHAT"),   # ← safer
-                "turn_id": STATE["turn_id"]
+                "intent":  result.get("intent", "CHAT"),
+                "turn_id": session["turn_id"]
             }
 
             logger.info(f"REXY: {result['reply'][:60]}")
             await websocket.send_text(json.dumps(response))
-            speak_async(result["reply"])
 
     except WebSocketDisconnect:
-        logger.info("WebSocket disconnected.")
+        logger.info(f"WebSocket disconnected — uid: {uid}")
     except Exception as e:
         logger.error(f"WebSocket error: {e}", exc_info=True)
 

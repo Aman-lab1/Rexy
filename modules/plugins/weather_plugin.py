@@ -195,20 +195,15 @@ class WeatherPlugin(RexyPlugin):
             encoded_city = urllib.parse.quote(city)
             url = f"https://wttr.in/{encoded_city}?format=j1"
 
-            import ssl
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-
+            # ✅ No custom SSL context — urllib uses system certs by default (safe)
             req = urllib.request.Request(url, headers={"User-Agent": "Rexy/4.0"})
-            with urllib.request.urlopen(req, timeout=10, context=ctx) as response:
+            with urllib.request.urlopen(req, timeout=10) as response:
                 raw = response.read().decode("utf-8")
                 data = json.loads(raw)
 
             current = data["current_condition"][0]
             area    = data["nearest_area"][0]
 
-            # Extract fields
             temp_c      = int(current["temp_C"])
             feels_like  = int(current["FeelsLikeC"])
             humidity    = int(current["humidity"])
