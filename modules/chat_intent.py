@@ -13,8 +13,6 @@ import logging
 from pyexpat.errors import messages
 from typing import Any, Dict, List, Optional
 
-import ollama
-
 import groq_client
 
 logger = logging.getLogger("rexy.chat")
@@ -116,7 +114,7 @@ NEVER do these:
             return reply
 
         except Exception as e:
-            logger.warning(f"Ollama chat failed: {e}")
+            logger.warning(f"Groq chat failed: {e}")
             return self._fallback_response(emotion, intent)
 
     # ─────────────────────────────────────────────
