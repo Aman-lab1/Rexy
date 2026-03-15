@@ -6,6 +6,7 @@ Used by orchestrator.py to verify users on WebSocket connection.
 
 import logging
 import firebase_admin
+import os
 from firebase_admin import credentials, auth
 
 from config import FIREBASE_PROJECT_ID
@@ -20,18 +21,21 @@ logger = logging.getLogger("rexy.firebase")
 _initialized = False
 
 def initialize() -> None:
-    """
-    Initialize Firebase Admin SDK.
-    Called once from orchestrator.py on startup.
-    Safe to call multiple times — skips if already initialized.
-    """
     global _initialized
 
     if _initialized:
         return
 
     try:
-        cred = credentials.Certificate("firebase_credentials.json")
+        import json as json_module
+        cred_json = os.environ.get("FIREBASE_CREDENTIALS_JSON", "")
+        
+        if cred_json:
+            cred_dict = json_module.loads(cred_json)
+            cred = credentials.Certificate(cred_dict)
+        else:
+            cred = credentials.Certificate("firebase_credentials.json")
+            
         firebase_admin.initialize_app(cred)
         _initialized = True
         logger.info(f"Firebase initialized — project: {FIREBASE_PROJECT_ID}")
