@@ -32,6 +32,8 @@ def initialize() -> None:
         
         if cred_json:
             cred_dict = json_module.loads(cred_json)
+            if "private_key" in cred_dict:
+                cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
             cred = credentials.Certificate(cred_dict)
         else:
             cred = credentials.Certificate("firebase_credentials.json")
