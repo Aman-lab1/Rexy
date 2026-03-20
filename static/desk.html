@@ -7,7 +7,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
   <title>Rexy</title>
 
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
@@ -35,131 +34,59 @@
        LOGIN SCREEN
     ════════════════════════════════ */
     #login-screen {
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background: #000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
       z-index: 1000;
       transition: opacity 600ms ease, transform 600ms cubic-bezier(0.34, 1.2, 0.64, 1);
     }
+    #login-screen.hide { opacity: 0; pointer-events: none; transform: scale(0.96); }
 
-    #login-screen.hide {
-      opacity: 0;
-      pointer-events: none;
-      transform: scale(0.96);
-    }
-
-    /* Mini face on login */
-    .login-face {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 36px;
-      animation: breathe 4s ease-in-out infinite;
-    }
+    .login-face { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 36px; animation: breathe 4s ease-in-out infinite; }
     .login-eyes { display: flex; gap: 22px; }
     .login-eye  { width: 28px; height: 34px; background: #fff; border-radius: 12px; }
     .login-mouth{ width: 20px; height: 5px; background: #fff; border-radius: 5px; }
 
-    .login-title {
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      margin-bottom: 6px;
-      color: #fff;
-    }
+    .login-title { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 6px; }
+    .login-sub   { font-size: 13px; color: #444; margin-bottom: 36px; }
 
-    .login-sub {
-      font-size: 13px;
-      color: #444;
-      margin-bottom: 36px;
-      letter-spacing: 0.01em;
-    }
-
-    .login-form {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      width: 300px;
-    }
-
+    .login-form { display: flex; flex-direction: column; gap: 12px; width: 300px; }
     .login-form input {
-      background: #111;
-      border: 1px solid #222;
-      border-radius: 14px;
-      padding: 14px 18px;
-      font-size: 15px;
-      color: #fff;
-      outline: none;
+      background: #111; border: 1px solid #222; border-radius: 14px;
+      padding: 14px 18px; font-size: 15px; color: #fff; outline: none;
       transition: border-color 200ms;
-      -webkit-appearance: none;
-      appearance: none;
+      -webkit-appearance: none; appearance: none;
     }
-
     .login-form input:focus { border-color: #444; }
     .login-form input::placeholder { color: #333; }
 
     .login-btn {
-      background: #fff;
-      color: #000;
-      border: none;
-      border-radius: 14px;
-      padding: 14px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      margin-top: 4px;
-      transition: background 150ms, transform 100ms;
+      background: #fff; color: #000; border: none; border-radius: 14px;
+      padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 4px;
+      transition: transform 100ms;
       -webkit-tap-highlight-color: transparent;
-      appearance: none;
+      -webkit-appearance: none; appearance: none;
     }
     .login-btn:active { transform: scale(0.97); }
-
-    #login-error {
-      font-size: 12px;
-      color: #ff4444;
-      text-align: center;
-      min-height: 18px;
-      margin-top: 4px;
-    }
+    #login-error { font-size: 12px; color: #ff4444; text-align: center; min-height: 18px; margin-top: 4px; }
 
     /* ════════════════════════════════
-       MAIN FACE SCREEN
+       MAIN SCREEN
     ════════════════════════════════ */
-    #main-screen {
-      position: fixed;
-      inset: 0;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 800ms ease;
-    }
-    #main-screen.show {
-      opacity: 1;
-      pointer-events: all;
-    }
+    #main-screen { position: fixed; inset: 0; opacity: 0; pointer-events: none; transition: opacity 800ms ease; }
+    #main-screen.show { opacity: 1; pointer-events: all; }
 
-    /* ── Scene ── */
     #scene {
       width: 100%; height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
     }
 
     /* ── Face ── */
     #face {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 36px;
+      display: flex; flex-direction: column; align-items: center; gap: 36px;
       animation: breathe 4s ease-in-out infinite;
       will-change: transform;
     }
@@ -199,18 +126,18 @@
     .eye.glance-right { transform: translateX(12px);  }
     .eye.look-up      { transform: translateY(-10px) !important; }
 
-    /* ── EMOTIONS ── */
+    /* ── EYE EMOTIONS (independent of mouth/speaking) ── */
     body[data-emotion="idle"]      .eye { width: var(--eye-w); height: var(--eye-h); border-radius: 42px; }
     body[data-emotion="listening"] .eye { width: 80px; height: 130px; border-radius: 50px; }
     body[data-emotion="happy"]     .eye { width: 100px; height: 72px; border-radius: 80px 80px 8px 8px; }
-    body[data-emotion="sad"]       .eye { width: 78px; height: 118px; border-radius: 44px 44px 28px 28px / 60px 60px 30px 30px; transform: rotate(-4deg); }
+    body[data-emotion="sad"]       .eye { width: 78px; height: 118px; border-radius: 44px 44px 28px 28px / 60px 60px 30px 30px; }
     body[data-emotion="sad"]     #eye-r { transform: rotate(4deg); }
+    body[data-emotion="sad"]     #eye-l { transform: rotate(-4deg); }
     body[data-emotion="thinking"] #eye-l { width: var(--eye-w); height: 44px; border-radius: 28px; }
     body[data-emotion="thinking"] #eye-r { width: var(--eye-w); height: var(--eye-h); border-radius: 42px; }
     body[data-emotion="surprised"] .eye  { width: 100px; height: 148px; border-radius: 60px; }
-    body[data-emotion="speaking"]  .eye  { width: var(--eye-w); height: 84px; border-radius: 36px; }
 
-    /* ── Mouth ── */
+    /* ── MOUTH — base states ── */
     #mouth {
       width: 64px; height: 14px;
       background: var(--face);
@@ -228,21 +155,27 @@
     body[data-emotion="thinking"]  #mouth { width: 20px;  height: 20px; border-radius: 50%; transform: translateX(12px); }
     body[data-emotion="listening"] #mouth { width: 40px;  height: 22px; border-radius: 50%; }
     body[data-emotion="surprised"] #mouth { width: 52px;  height: 52px; border-radius: 50%; }
-    body[data-emotion="speaking"]  #mouth { width: 56px;  height: 28px; border-radius: 50%; animation: speak-pulse 0.4s ease-in-out infinite alternate; }
+
+    /* ── SPEAKING OVERLAY — mouth pulses regardless of eye emotion ── */
+    body[data-speaking="true"] #mouth {
+      width: 56px !important;
+      height: 28px !important;
+      border-radius: 50% !important;
+      transform: none !important;
+      animation: speak-pulse 0.4s ease-in-out infinite alternate !important;
+      transition: none !important;
+    }
 
     @keyframes speak-pulse {
       from { height: 18px; }
-      to   { height: 36px; }
+      to   { height: 40px; }
     }
 
-    /* ── Mic ring — pulses during listening ── */
+    /* ── Mic ring ── */
     #mic-ring {
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       border: 2px solid rgba(255,255,255,0);
-      border-radius: 0;
-      pointer-events: none;
-      z-index: 10;
+      pointer-events: none; z-index: 10;
       transition: border-color 400ms ease;
     }
     #mic-ring.active {
@@ -254,77 +187,44 @@
       50%       { border-color: rgba(255,255,255,0.14); }
     }
 
-    /* ── Status hint ── */
+    /* ── Status ── */
     #status {
-      position: fixed;
-      bottom: 36px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 11px;
-      color: #2a2a2a;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      transition: color 300ms, opacity 300ms;
-      pointer-events: none;
-      white-space: nowrap;
-      z-index: 20;
+      position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%);
+      font-size: 11px; color: #2a2a2a; letter-spacing: 0.08em; text-transform: uppercase;
+      transition: color 300ms; pointer-events: none; white-space: nowrap; z-index: 20;
     }
     #status.visible { color: #3a3a3a; }
 
-    /* ── Transcript bubble ── */
+    /* ── Transcript ── */
     #transcript-bubble {
-      position: fixed;
-      bottom: 60px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #111;
-      border: 1px solid #222;
-      border-radius: 18px;
-      padding: 10px 18px;
-      font-size: 13px;
-      color: #888;
-      max-width: 280px;
-      text-align: center;
-      opacity: 0;
-      transition: opacity 300ms;
-      pointer-events: none;
-      z-index: 20;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%);
+      background: #111; border: 1px solid #222; border-radius: 18px;
+      padding: 10px 18px; font-size: 13px; color: #888; max-width: 280px;
+      text-align: center; opacity: 0; transition: opacity 300ms;
+      pointer-events: none; z-index: 20; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
     }
     #transcript-bubble.show { opacity: 1; }
 
-    /* ══════════════════════════════════
+    /* ════════════════════════════════
        NOTIFICATION ISLAND
-    ══════════════════════════════════ */
+    ════════════════════════════════ */
     #island-wrap {
-      position: fixed;
-      top: 28px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 200;
-      pointer-events: none;
+      position: fixed; top: 28px; left: 50%; transform: translateX(-50%);
+      z-index: 200; pointer-events: none;
     }
 
     #island {
-      background: #ffffff;
-      border-radius: 999px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
+      background: #ffffff; border-radius: 999px;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
       width: 10px; height: 10px; opacity: 0;
-      transition:
-        width   280ms cubic-bezier(0.34, 1.3, 0.64, 1),
-        height  280ms cubic-bezier(0.34, 1.3, 0.64, 1),
-        opacity 180ms ease;
+      transition: width 280ms cubic-bezier(0.34,1.3,0.64,1), height 280ms cubic-bezier(0.34,1.3,0.64,1), opacity 180ms ease;
       will-change: width, height, opacity;
     }
 
-    #island.dot      { width: 10px; height: 10px; opacity: 1; }
-    #island.expanded { width: 260px; height: 44px; opacity: 1; }
-    #island.gone     { width: 10px; height: 10px; opacity: 0; }
+    #island.dot      { width: 10px;  height: 10px;  opacity: 1; }
+    #island.expanded { width: 260px; height: 44px;  opacity: 1; }
+    #island.gone     { width: 10px;  height: 10px;  opacity: 0; }
 
     #island-content {
       display: flex; align-items: center; justify-content: center;
@@ -346,21 +246,16 @@
   </style>
 </head>
 
-<body data-emotion="idle">
+<body data-emotion="idle" data-speaking="false">
 
-<!-- ── LOGIN SCREEN ── -->
+<!-- LOGIN -->
 <div id="login-screen">
   <div class="login-face">
-    <div class="login-eyes">
-      <div class="login-eye"></div>
-      <div class="login-eye"></div>
-    </div>
+    <div class="login-eyes"><div class="login-eye"></div><div class="login-eye"></div></div>
     <div class="login-mouth"></div>
   </div>
-
   <div class="login-title">Hey, I'm Rexy.</div>
   <div class="login-sub">Sign in to wake me up.</div>
-
   <div class="login-form">
     <input type="email"    id="login-email" placeholder="Email"    autocomplete="email"/>
     <input type="password" id="login-pass"  placeholder="Password" autocomplete="current-password"/>
@@ -369,13 +264,11 @@
   </div>
 </div>
 
-<!-- ── MAIN SCREEN ── -->
+<!-- MAIN -->
 <div id="main-screen">
-
   <div id="vignette"></div>
   <div id="mic-ring"></div>
 
-  <!-- Notification Island -->
   <div id="island-wrap">
     <div id="island" class="gone">
       <div id="island-content">
@@ -385,7 +278,6 @@
     </div>
   </div>
 
-  <!-- Face -->
   <div id="scene">
     <div id="face">
       <div id="eyes">
@@ -396,44 +288,38 @@
     </div>
   </div>
 
-  <!-- Status + transcript -->
   <div id="status">tap to speak</div>
   <div id="transcript-bubble"></div>
-
 </div>
 
 <script>
-/* ═══════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════
    REXY DESK BUDDY — Phase 3
-   Firebase Auth | WebSocket | Voice | TTS
-   EmotionEngine | BlinkEngine | IdleEngine | IslandEngine
-═══════════════════════════════════════════════ */
+   Firebase | WebSocket | Voice | TTS | Emotion Timing
+═══════════════════════════════════════════════════ */
 
-// ── CONFIG ──
 const FIREBASE_CONFIG = {
-  apiKey:      "AIzaSyBJfildiIOb3PeUNDdPaiic2ZoBl_0qg5E",
-  authDomain:  "rexyassistant.firebaseapp.com",
-  projectId:   "rexyassistant"
+  apiKey:     "AIzaSyBJfildiIOb3PeUNDdPaiic2ZoBl_0qg5E",
+  authDomain: "rexyassistant.firebaseapp.com",
+  projectId:  "rexyassistant"
 };
 const RAILWAY_WS = "wss://web-production-1c2c75.up.railway.app/ws";
 
-// ── Firebase init ──
 firebase.initializeApp(FIREBASE_CONFIG);
 const fbAuth = firebase.auth();
 
-// ── DOM refs ──
-const eyeL          = document.getElementById('eye-l');
-const eyeR          = document.getElementById('eye-r');
-const face          = document.getElementById('face');
-const statusEl      = document.getElementById('status');
-const transcriptEl  = document.getElementById('transcript-bubble');
-const micRing       = document.getElementById('mic-ring');
+const eyeL         = document.getElementById('eye-l');
+const eyeR         = document.getElementById('eye-r');
+const face         = document.getElementById('face');
+const statusEl     = document.getElementById('status');
+const transcriptEl = document.getElementById('transcript-bubble');
+const micRing      = document.getElementById('mic-ring');
 
-/* ════════════════════════════════════════
+/* ════════════════════════════
    1. EMOTION ENGINE
-════════════════════════════════════════ */
+════════════════════════════ */
 const EmotionEngine = (() => {
-  let current = 'idle';
+  let current     = 'idle';
   let returnTimer = null;
 
   function set(emotion, duration = null) {
@@ -443,16 +329,24 @@ const EmotionEngine = (() => {
     if (duration) returnTimer = setTimeout(() => set('idle'), duration);
   }
 
+  // Speaking overlay — animates mouth without touching eye emotion
+  function setSpeaking(active) {
+    document.body.setAttribute('data-speaking', active ? 'true' : 'false');
+  }
+
   function get() { return current; }
-  return { set, get };
+  return { set, get, setSpeaking };
 })();
 
-/* ════════════════════════════════════════
+/* ════════════════════════════
    2. BLINK ENGINE
-════════════════════════════════════════ */
+════════════════════════════ */
 const BlinkEngine = (() => {
   function blink() {
     if (['sad','surprised'].includes(EmotionEngine.get())) { schedule(); return; }
+    // Don't blink while speaking
+    if (document.body.getAttribute('data-speaking') === 'true') { schedule(); return; }
+
     eyeL.classList.add('blink'); eyeR.classList.add('blink');
     setTimeout(() => {
       eyeL.classList.remove('blink'); eyeR.classList.remove('blink');
@@ -468,9 +362,9 @@ const BlinkEngine = (() => {
   return { start };
 })();
 
-/* ════════════════════════════════════════
+/* ════════════════════════════
    3. IDLE ENGINE
-════════════════════════════════════════ */
+════════════════════════════ */
 const IdleEngine = (() => {
   function glance() {
     if (EmotionEngine.get() !== 'idle') { scheduleGlance(); return; }
@@ -495,9 +389,9 @@ const IdleEngine = (() => {
   return { start };
 })();
 
-/* ════════════════════════════════════════
+/* ════════════════════════════
    4. ISLAND ENGINE
-════════════════════════════════════════ */
+════════════════════════════ */
 const IslandEngine = (() => {
   const island = document.getElementById('island');
   const iconEl = document.getElementById('island-icon');
@@ -528,7 +422,9 @@ const IslandEngine = (() => {
 
     setTimeout(() => {
       island.className = 'expanded';
+      // Set eye emotion when island expands
       setTimeout(() => EmotionEngine.set(emotion), 300);
+      // Collapse island — emotion STAYS, TTS will hold it
       setTimeout(collapse, 2600);
     }, 200);
   }
@@ -539,7 +435,7 @@ const IslandEngine = (() => {
       eyeL.classList.remove('look-up');
       eyeR.classList.remove('look-up');
       face.classList.remove('look-up');
-      EmotionEngine.set('idle');
+      // ← No EmotionEngine.set('idle') here — TTS handles the reset
     }, 180);
     setTimeout(() => {
       island.className = 'gone';
@@ -550,11 +446,11 @@ const IslandEngine = (() => {
   return { notify: enqueue };
 })();
 
-/* ════════════════════════════════════════
+/* ════════════════════════════
    5. TTS ENGINE
-════════════════════════════════════════ */
+════════════════════════════ */
 const TTSEngine = (() => {
-  function speak(text) {
+  function speak(text, emotion = 'idle') {
     if (!text) return;
     window.speechSynthesis.cancel();
 
@@ -563,15 +459,28 @@ const TTSEngine = (() => {
     utt.pitch  = 1.1;
     utt.volume = 1;
 
-    // Pick a decent voice if available
     const voices = window.speechSynthesis.getVoices();
     const preferred = voices.find(v =>
       v.name.includes('Google') || v.name.includes('Samantha') || v.lang === 'en-US'
     );
     if (preferred) utt.voice = preferred;
 
-    utt.onstart = () => EmotionEngine.set('speaking');
-    utt.onend   = () => {
+    utt.onstart = () => {
+      // Eyes show the response emotion, mouth pulses
+      EmotionEngine.set(emotion);
+      EmotionEngine.setSpeaking(true);
+      setStatus('speaking…');
+    };
+
+    utt.onend = () => {
+      // Speech done → clear speaking mouth, return to idle
+      EmotionEngine.setSpeaking(false);
+      EmotionEngine.set('idle');
+      setStatus('tap to speak');
+    };
+
+    utt.onerror = () => {
+      EmotionEngine.setSpeaking(false);
       EmotionEngine.set('idle');
       setStatus('tap to speak');
     };
@@ -582,13 +491,41 @@ const TTSEngine = (() => {
   return { speak };
 })();
 
-/* ════════════════════════════════════════
+/* ════════════════════════════
    6. WEBSOCKET ENGINE
-════════════════════════════════════════ */
+════════════════════════════ */
 const WSEngine = (() => {
   let ws        = null;
   let authToken = null;
-  let reconnectTimer = null;
+
+  // Map backend emotion values → face emotion states
+  const EMOTION_MAP = {
+    'neutral':  'idle',
+    'positive': 'happy',
+    'negative': 'sad',
+    'curious':  'thinking',
+    'error':    'sad',
+    // pass-through values
+    'happy':    'happy',
+    'sad':      'sad',
+    'thinking': 'thinking',
+    'surprised':'surprised',
+    'listening':'listening',
+  };
+
+  // Map intent → default emotion (fallback if plugin returns neutral)
+  const INTENT_EMOTIONS = {
+    'CHAT':        'happy',
+    'WEATHER':     'happy',
+    'CALENDAR':    'happy',
+    'MEMORY':      'happy',
+    'WEB_SEARCH':  'thinking',
+    'COMPUTER':    'happy',
+    'SYSTEM_INFO': 'happy',
+    'FILE_READ':   'thinking',
+    'CALCULATOR':  'happy',
+    'TIME':        'happy',
+  };
 
   function init(token) {
     authToken = token;
@@ -597,12 +534,9 @@ const WSEngine = (() => {
 
   function connect() {
     if (ws && ws.readyState === WebSocket.OPEN) return;
-
     ws = new WebSocket(RAILWAY_WS);
 
     ws.onopen = () => {
-      console.log('WS connected');
-      // Send auth token as first message
       ws.send(JSON.stringify({ type: 'auth', token: authToken }));
     };
 
@@ -610,61 +544,78 @@ const WSEngine = (() => {
       try {
         const data = JSON.parse(event.data);
         handleResponse(data);
-      } catch(e) {
-        console.error('WS parse error:', e);
-      }
+      } catch(e) { console.error('WS parse error:', e); }
     };
 
-    ws.onclose = () => {
-      console.log('WS closed — reconnecting in 3s');
-      reconnectTimer = setTimeout(connect, 3000);
-    };
-
-    ws.onerror = (e) => {
-      console.error('WS error:', e);
-    };
+    ws.onclose = () => setTimeout(connect, 3000);
+    ws.onerror = (e) => console.error('WS error:', e);
   }
 
   function send(text) {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      notify('⚠️', 'Not connected', 'sad');
+      IslandEngine.notify('⚠️', 'Not connected', 'sad');
       return;
     }
     ws.send(JSON.stringify({ message: text }));
   }
 
   function handleResponse(data) {
-    // data could be string reply or structured {reply, emotion, notification}
     let reply      = '';
     let emotion    = 'happy';
     let notifText  = '';
     let notifIcon  = '💬';
+    let intent     = '';
 
     if (typeof data === 'string') {
       reply = data;
     } else {
-      reply      = data.reply      || data.message || data.response || '';
-      emotion    = data.emotion    || 'happy';
-      notifText  = data.notification || '';
-      notifIcon  = data.icon        || '💬';
+      reply     = data.reply      || data.message || data.response || '';
+      emotion   = data.emotion    || 'happy';
+      notifText = data.notification || '';
+      notifIcon = data.icon        || '💬';
+      intent    = data.intent      || '';
     }
 
     if (!reply) return;
 
-    // Show notification if provided, else show truncated reply
-    const displayText = notifText || (reply.length > 32 ? reply.slice(0,30)+'…' : reply);
-    IslandEngine.notify(notifIcon, displayText, emotion);
+    // Resolve final face emotion:
+    // 1. Use mapped emotion from backend
+    // 2. Fall back to intent-based emotion
+    // 3. Default happy
+    let faceEmotion = EMOTION_MAP[emotion] || emotion;
+    if (faceEmotion === 'idle' || faceEmotion === 'neutral') {
+      faceEmotion = INTENT_EMOTIONS[intent] || 'happy';
+    }
 
-    // Speak the reply
-    setTimeout(() => TTSEngine.speak(reply), 600);
+    // Pick notification icon based on intent if not provided
+    if (notifIcon === '💬') {
+      const intentIcons = {
+        'WEATHER':     '🌤',
+        'CALENDAR':    '📅',
+        'MEMORY':      '💾',
+        'WEB_SEARCH':  '🔍',
+        'COMPUTER':    '💻',
+        'SYSTEM_INFO': '🖥',
+        'FILE_READ':   '📄',
+        'CALCULATOR':  '🧮',
+        'TIME':        '🕐',
+      };
+      notifIcon = intentIcons[intent] || '💬';
+    }
+
+    const displayText = notifText || (reply.length > 32 ? reply.slice(0, 30) + '…' : reply);
+    IslandEngine.notify(notifIcon, displayText, faceEmotion);
+
+    // Pass emotion to TTS — it holds until speech finishes
+    setTimeout(() => TTSEngine.speak(reply, faceEmotion), 600);
   }
 
   return { init, send };
 })();
 
-/* ════════════════════════════════════════
-   7. VOICE ENGINE (Web Speech API)
-════════════════════════════════════════ */
+/* ════════════════════════════
+   7. VOICE ENGINE
+════════════════════════════ */
 const VoiceEngine = (() => {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { console.warn('SpeechRecognition not supported'); return { start: () => {} }; }
@@ -674,10 +625,10 @@ const VoiceEngine = (() => {
 
   function build() {
     recognition = new SR();
-    recognition.lang        = 'en-US';
+    recognition.lang           = 'en-US';
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
-    recognition.continuous  = false;
+    recognition.continuous     = false;
 
     recognition.onstart = () => {
       listening = true;
@@ -694,17 +645,13 @@ const VoiceEngine = (() => {
         e.results[i].isFinal ? (final += t) : (interim += t);
       }
       showTranscript(final || interim);
-      if (final) {
-        onFinal(final.trim());
-      }
+      if (final) onFinal(final.trim());
     };
 
     recognition.onerror = (e) => {
       console.error('SR error:', e.error);
       stopListening();
-      if (e.error === 'no-speech') {
-        IslandEngine.notify('👂', 'Nothing heard — try again', 'sad');
-      }
+      if (e.error === 'no-speech') IslandEngine.notify('👂', 'Nothing heard — try again', 'sad');
     };
 
     recognition.onend = () => {
@@ -719,18 +666,13 @@ const VoiceEngine = (() => {
     EmotionEngine.set('thinking');
     setStatus('thinking…');
     showTranscript(text);
-    IslandEngine.notify('🔍', text.length > 28 ? text.slice(0,26)+'…' : text, 'thinking');
-
-    // Send to Railway
+    IslandEngine.notify('🔍', text.length > 28 ? text.slice(0, 26) + '…' : text, 'thinking');
     setTimeout(() => WSEngine.send(text), 300);
-
-    // Hide transcript after a moment
     setTimeout(() => hideTranscript(), 3000);
   }
 
   function start() {
     if (listening) { stop(); return; }
-    // Rebuild each time to avoid browser state issues
     build();
     try { recognition.start(); }
     catch(e) { console.error('SR start failed:', e); }
@@ -750,27 +692,23 @@ const VoiceEngine = (() => {
   return { start, stop };
 })();
 
-/* ════════════════════════════════════════
+/* ════════════════════════════
    8. UI HELPERS
-════════════════════════════════════════ */
+════════════════════════════ */
 function setStatus(text) {
   statusEl.textContent = text;
   statusEl.classList.toggle('visible', text !== 'tap to speak');
 }
-
 function showTranscript(text) {
   if (!text) return;
   transcriptEl.textContent = text;
   transcriptEl.classList.add('show');
 }
+function hideTranscript() { transcriptEl.classList.remove('show'); }
 
-function hideTranscript() {
-  transcriptEl.classList.remove('show');
-}
-
-/* ════════════════════════════════════════
+/* ════════════════════════════
    9. FIREBASE LOGIN
-════════════════════════════════════════ */
+════════════════════════════ */
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass  = document.getElementById('login-pass').value;
@@ -783,55 +721,42 @@ async function doLogin() {
     const cred  = await fbAuth.signInWithEmailAndPassword(email, pass);
     const token = await cred.user.getIdToken();
 
-    // Hide login, show main
     document.getElementById('login-screen').classList.add('hide');
-    const main = document.getElementById('main-screen');
-    main.classList.add('show');
+    document.getElementById('main-screen').classList.add('show');
 
-    // Boot face systems
     EmotionEngine.set('idle');
     BlinkEngine.start();
     IdleEngine.start();
-
-    // Connect WebSocket
     WSEngine.init(token);
 
-    // Welcome
     setTimeout(() => {
-      const name = cred.user.displayName
-        ? cred.user.displayName.split(' ')[0]
-        : 'there';
+      const name = cred.user.displayName ? cred.user.displayName.split(' ')[0] : 'there';
       IslandEngine.notify('👋', `Hey ${name}, I'm awake!`, 'happy');
-      setTimeout(() => TTSEngine.speak(`Hey ${name}! I'm Rexy, tap me anytime.`), 800);
+      setTimeout(() => TTSEngine.speak(`Hey ${name}! Tap me anytime.`, 'happy'), 800);
     }, 800);
 
   } catch(err) {
-    console.error(err);
     const msgs = {
-      'auth/invalid-credential':   'Wrong email or password.',
-      'auth/user-not-found':       'No account found.',
-      'auth/wrong-password':       'Wrong password.',
-      'auth/invalid-email':        'Invalid email format.',
-      'auth/too-many-requests':    'Too many attempts — try later.',
+      'auth/invalid-credential': 'Wrong email or password.',
+      'auth/user-not-found':     'No account found.',
+      'auth/wrong-password':     'Wrong password.',
+      'auth/invalid-email':      'Invalid email format.',
+      'auth/too-many-requests':  'Too many attempts — try later.',
     };
     errEl.textContent = msgs[err.code] || 'Login failed. Try again.';
   }
 }
 
-// Allow Enter key on login
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter') doLogin();
-});
+document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
-/* ════════════════════════════════════════
+/* ════════════════════════════
    10. TAP TO SPEAK
-════════════════════════════════════════ */
+════════════════════════════ */
 document.getElementById('scene').addEventListener('click', () => {
-  // Don't trigger during speaking or thinking
-  if (['speaking','thinking'].includes(EmotionEngine.get())) return;
+  if (['speaking', 'thinking'].includes(EmotionEngine.get())) return;
+  if (document.body.getAttribute('data-speaking') === 'true') return;
   VoiceEngine.start();
 });
-
 </script>
 </body>
 </html>
