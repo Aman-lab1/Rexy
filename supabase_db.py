@@ -7,6 +7,7 @@ for multi-user support.
 """
 
 import logging
+from datetime import datetime
 from typing import Any, Dict, Optional
 from supabase import create_client, Client
 from config import SUPABASE_URL, SUPABASE_ANON_KEY
@@ -55,10 +56,11 @@ def get_user_data(uid: str) -> Optional[Dict]:
     """
     if not _check():
         return None
+    assert _client is not None
     try:
         result = _client.table("user_data").select("*").eq("uid", uid).execute()
         if result.data:
-            return result.data[0]
+            return dict(result.data[0])
         return None
     except Exception as e:
         logger.error(f"get_user_data failed for uid '{uid}': {e}")
@@ -76,6 +78,7 @@ def create_user(uid: str, email: str) -> bool:
     """
     if not _check():
         return False
+    assert _client is not None
     try:
         _client.table("user_data").insert({
             "uid":      uid,
@@ -90,16 +93,18 @@ def create_user(uid: str, email: str) -> bool:
         return False
 
 # ─────────────────────────────────────────────
-# SAVE MEMORIES
+# SAVE MEMORIES (full dict overwrite)
 # ─────────────────────────────────────────────
 
 def save_memories(uid: str, memories: Dict) -> bool:
     """
     Save a user's memories to Supabase.
     Overwrites the entire memories field.
+    Use save_single_memory() when adding just one entry.
     """
     if not _check():
         return False
+    assert _client is not None
     try:
         _client.table("user_data").update({
             "memories": memories
@@ -108,6 +113,66 @@ def save_memories(uid: str, memories: Dict) -> bool:
         return True
     except Exception as e:
         logger.error(f"save_memories failed for uid '{uid}': {e}")
+        return False
+
+# ─────────────────────────────────────────────
+# SAVE SINGLE MEMORY (safe, enforces format)
+# ─────────────────────────────────────────────
+
+def save_single_memory(uid: str, key: str, value: str) -> bool:
+    """
+    Add or update a single memory entry for a user.
+
+    This is the ONLY correct way for plugins to write to memory.
+    Always saves in the format MemoryPlugin expects:
+        {
+            "value":    "the thing to remember",
+            "saved_at": "2026-03-18 14:30"
+        }
+
+    Using this function means:
+    - Format is always correct — MemoryPlugin.forget() will never crash
+    - Key collisions are handled — existing key gets updated, not duplicated
+    - No plugin needs to know the internal memory structure
+
+    Args:
+        uid:   Firebase user ID
+        key:   Memory key (e.g. "physics_exam", "project_deadline")
+               Will be lowercased and spaces replaced with underscores
+        value: The content to remember
+
+    Returns:
+        True on success, False on failure
+
+    Example:
+        save_single_memory(uid, "physics exam", "is on May 20 at 2pm")
+        # Saves as memories["physics_exam"] = {"value": "is on May 20 at 2pm", ...}
+    """
+    if not uid or not key or not value:
+        logger.warning(f"save_single_memory called with empty args: uid={uid} key={key}")
+        return False
+
+    # Normalise key — lowercase, underscores, max 30 chars
+    clean_key = key.lower().strip().replace(" ", "_")[:30]
+
+    try:
+        # Load existing memories
+        user_data = get_user_data(uid) or {}
+        memories  = user_data.get("memories", {}) or {}
+
+        # Write in the correct format
+        memories[clean_key] = {
+            "value":    value,
+            "saved_at": datetime.now().strftime("%Y-%m-%d %H:%M")
+        }
+
+        success = save_memories(uid, memories)
+        if success:
+            logger.info(f"Single memory saved — uid: {uid} key: '{clean_key}'")
+        return success
+
+    except Exception as e:
+        logger.error(f"save_single_memory failed for uid '{uid}': {e}")
         return False
 
 # ─────────────────────────────────────────────
@@ -121,6 +186,7 @@ def save_identity(uid: str, identity: Dict) -> bool:
     """
     if not _check():
         return False
+    assert _client is not None
     try:
         _client.table("user_data").update({
             "identity": identity
