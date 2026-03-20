@@ -40,7 +40,10 @@ logging.basicConfig(
 logger = logging.getLogger("rexy.local_agent")
 
 # ── Config ────────────────────────────────────────────────────
-REXY_WS_URL = "wss://web-production-1c2c75.up.railway.app/ws-agent"
+if "--local" in sys.argv:
+    REXY_WS_URL = "ws://localhost:8000/ws-agent"
+else:
+    REXY_WS_URL = "wss://web-production-1c2c75.up.railway.app/ws-agent"
 RECONNECT_WAIT = 5
 SCREENSHOT_DIR = str(Path.home() / "Pictures" / "Rexy Screenshots")
 os.makedirs(SCREENSHOT_DIR, exist_ok=True)
