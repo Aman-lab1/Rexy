@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+  <title>Rexy</title>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #000000;
+      --face:    #ffffff;
+      --eye-w:   90px;
+      --eye-h:   110px;
+      --eye-gap: 80px;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      overflow: hidden;
+      touch-action: none;
+      font-family: -apple-system, 'Helvetica Neue', sans-serif;
+      color: #fff;
+    }
+
+    /* ════════════════════════════════
+       LOGIN SCREEN
+    ════════════════════════════════ */
+    #login-screen {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      z-index: 1000;
+      transition: opacity 600ms ease, transform 600ms cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+
+    #login-screen.hide {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.96);
+    }
+
+    /* Mini face on login */
+    .login-face {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 36px;
+      animation: breathe 4s ease-in-out infinite;
+    }
+    .login-eyes { display: flex; gap: 22px; }
+    .login-eye  { width: 28px; height: 34px; background: #fff; border-radius: 12px; }
+    .login-mouth{ width: 20px; height: 5px; background: #fff; border-radius: 5px; }
+
+    .login-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+
+    .login-sub {
+      font-size: 13px;
+      color: #444;
+      margin-bottom: 36px;
+      letter-spacing: 0.01em;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 300px;
+    }
+
+    .login-form input {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 15px;
+      color: #fff;
+      outline: none;
+      transition: border-color 200ms;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .login-form input:focus { border-color: #444; }
+    .login-form input::placeholder { color: #333; }
+
+    .login-btn {
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: background 150ms, transform 100ms;
+      -webkit-tap-highlight-color: transparent;
+      appearance: none;
+    }
+    .login-btn:active { transform: scale(0.97); }
+
+    #login-error {
+      font-size: 12px;
+      color: #ff4444;
+      text-align: center;
+      min-height: 18px;
+      margin-top: 4px;
+    }
+
+    /* ════════════════════════════════
+       MAIN FACE SCREEN
+    ════════════════════════════════ */
+    #main-screen {
+      position: fixed;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 800ms ease;
+    }
+    #main-screen.show {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    /* ── Scene ── */
+    #scene {
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── Face ── */
+    #face {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 36px;
+      animation: breathe 4s ease-in-out infinite;
+      will-change: transform;
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1);     }
+      50%       { transform: scale(1.018);}
+    }
+
+    #face.look-up {
+      animation: none;
+      transform: translateY(-18px) !important;
+      transition: transform 500ms cubic-bezier(0.34, 1.3, 0.64, 1) !important;
+    }
+
+    /* ── Eyes ── */
+    #eyes { display: flex; align-items: center; gap: var(--eye-gap); }
+
+    .eye {
+      width:  var(--eye-w);
+      height: var(--eye-h);
+      background: var(--face);
+      border-radius: 42px;
+      transition:
+        width         400ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        height        400ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        border-radius 400ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        transform     400ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        opacity       200ms ease;
+      will-change: transform, height, border-radius;
+      transform-origin: center center;
+    }
+
+    .eye.blink       { transform: scaleY(0.05) !important; transition: transform 80ms  ease-in  !important; }
+    .eye.blink-open  { transform: scaleY(1)    !important; transition: transform 100ms ease-out !important; }
+    .eye.glance-left  { transform: translateX(-12px); }
+    .eye.glance-right { transform: translateX(12px);  }
+    .eye.look-up      { transform: translateY(-10px) !important; }
+
+    /* ── EMOTIONS ── */
+    body[data-emotion="idle"]      .eye { width: var(--eye-w); height: var(--eye-h); border-radius: 42px; }
+    body[data-emotion="listening"] .eye { width: 80px; height: 130px; border-radius: 50px; }
+    body[data-emotion="happy"]     .eye { width: 100px; height: 72px; border-radius: 80px 80px 8px 8px; }
+    body[data-emotion="sad"]       .eye { width: 78px; height: 118px; border-radius: 44px 44px 28px 28px / 60px 60px 30px 30px; transform: rotate(-4deg); }
+    body[data-emotion="sad"]     #eye-r { transform: rotate(4deg); }
+    body[data-emotion="thinking"] #eye-l { width: var(--eye-w); height: 44px; border-radius: 28px; }
+    body[data-emotion="thinking"] #eye-r { width: var(--eye-w); height: var(--eye-h); border-radius: 42px; }
+    body[data-emotion="surprised"] .eye  { width: 100px; height: 148px; border-radius: 60px; }
+    body[data-emotion="speaking"]  .eye  { width: var(--eye-w); height: 84px; border-radius: 36px; }
+
+    /* ── Mouth ── */
+    #mouth {
+      width: 64px; height: 14px;
+      background: var(--face);
+      border-radius: 12px;
+      transition:
+        width         400ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        height        400ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        border-radius 400ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        transform     400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    body[data-emotion="idle"]      #mouth { width: 64px;  height: 14px; border-radius: 12px; transform: none; }
+    body[data-emotion="happy"]     #mouth { width: 96px;  height: 20px; border-radius: 0 0 60px 60px / 0 0 28px 28px; }
+    body[data-emotion="sad"]       #mouth { width: 80px;  height: 20px; border-radius: 60px 60px 0 0 / 28px 28px 0 0; }
+    body[data-emotion="thinking"]  #mouth { width: 20px;  height: 20px; border-radius: 50%; transform: translateX(12px); }
+    body[data-emotion="listening"] #mouth { width: 40px;  height: 22px; border-radius: 50%; }
+    body[data-emotion="surprised"] #mouth { width: 52px;  height: 52px; border-radius: 50%; }
+    body[data-emotion="speaking"]  #mouth { width: 56px;  height: 28px; border-radius: 50%; animation: speak-pulse 0.4s ease-in-out infinite alternate; }
+
+    @keyframes speak-pulse {
+      from { height: 18px; }
+      to   { height: 36px; }
+    }
+
+    /* ── Mic ring — pulses during listening ── */
+    #mic-ring {
+      position: fixed;
+      inset: 0;
+      border: 2px solid rgba(255,255,255,0);
+      border-radius: 0;
+      pointer-events: none;
+      z-index: 10;
+      transition: border-color 400ms ease;
+    }
+    #mic-ring.active {
+      border-color: rgba(255,255,255,0.08);
+      animation: ring-pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes ring-pulse {
+      0%, 100% { border-color: rgba(255,255,255,0.05); }
+      50%       { border-color: rgba(255,255,255,0.14); }
+    }
+
+    /* ── Status hint ── */
+    #status {
+      position: fixed;
+      bottom: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      color: #2a2a2a;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: color 300ms, opacity 300ms;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 20;
+    }
+    #status.visible { color: #3a3a3a; }
+
+    /* ── Transcript bubble ── */
+    #transcript-bubble {
+      position: fixed;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 18px;
+      padding: 10px 18px;
+      font-size: 13px;
+      color: #888;
+      max-width: 280px;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 300ms;
+      pointer-events: none;
+      z-index: 20;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #transcript-bubble.show { opacity: 1; }
+
+    /* ══════════════════════════════════
+       NOTIFICATION ISLAND
+    ══════════════════════════════════ */
+    #island-wrap {
+      position: fixed;
+      top: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 200;
+      pointer-events: none;
+    }
+
+    #island {
+      background: #ffffff;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      width: 10px; height: 10px; opacity: 0;
+      transition:
+        width   280ms cubic-bezier(0.34, 1.3, 0.64, 1),
+        height  280ms cubic-bezier(0.34, 1.3, 0.64, 1),
+        opacity 180ms ease;
+      will-change: width, height, opacity;
+    }
+
+    #island.dot      { width: 10px; height: 10px; opacity: 1; }
+    #island.expanded { width: 260px; height: 44px; opacity: 1; }
+    #island.gone     { width: 10px; height: 10px; opacity: 0; }
+
+    #island-content {
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 0 18px; width: 100%;
+      opacity: 0; transform: scale(0.88);
+      transition: opacity 180ms ease 100ms, transform 240ms cubic-bezier(0.34,1.56,0.64,1) 100ms;
+      pointer-events: none;
+    }
+    #island.expanded #island-content { opacity: 1; transform: scale(1); }
+    #island-icon { font-size: 15px; flex-shrink: 0; line-height: 1; }
+    #island-text { font-size: 13.5px; font-weight: 600; letter-spacing: -0.015em; color: #000; white-space: nowrap; }
+
+    /* ── Vignette ── */
+    #vignette {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 50%, #000 100%);
+      pointer-events: none; z-index: 50;
+    }
+  </style>
+</head>
+
+<body data-emotion="idle">
+
+<!-- ── LOGIN SCREEN ── -->
+<div id="login-screen">
+  <div class="login-face">
+    <div class="login-eyes">
+      <div class="login-eye"></div>
+      <div class="login-eye"></div>
+    </div>
+    <div class="login-mouth"></div>
+  </div>
+
+  <div class="login-title">Hey, I'm Rexy.</div>
+  <div class="login-sub">Sign in to wake me up.</div>
+
+  <div class="login-form">
+    <input type="email"    id="login-email" placeholder="Email"    autocomplete="email"/>
+    <input type="password" id="login-pass"  placeholder="Password" autocomplete="current-password"/>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<!-- ── MAIN SCREEN ── -->
+<div id="main-screen">
+
+  <div id="vignette"></div>
+  <div id="mic-ring"></div>
+
+  <!-- Notification Island -->
+  <div id="island-wrap">
+    <div id="island" class="gone">
+      <div id="island-content">
+        <span id="island-icon"></span>
+        <span id="island-text"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Face -->
+  <div id="scene">
+    <div id="face">
+      <div id="eyes">
+        <div class="eye" id="eye-l"></div>
+        <div class="eye" id="eye-r"></div>
+      </div>
+      <div id="mouth"></div>
+    </div>
+  </div>
+
+  <!-- Status + transcript -->
+  <div id="status">tap to speak</div>
+  <div id="transcript-bubble"></div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   REXY DESK BUDDY — Phase 3
+   Firebase Auth | WebSocket | Voice | TTS
+   EmotionEngine | BlinkEngine | IdleEngine | IslandEngine
+═══════════════════════════════════════════════ */
+
+// ── CONFIG ──
+const FIREBASE_CONFIG = {
+  apiKey:      "AIzaSyBJfildiIOb3PeUNDdPaiic2ZoBl_0qg5E",
+  authDomain:  "rexyassistant.firebaseapp.com",
+  projectId:   "rexyassistant"
+};
+const RAILWAY_WS = "wss://web-production-1c2c75.up.railway.app/ws";
+
+// ── Firebase init ──
+firebase.initializeApp(FIREBASE_CONFIG);
+const fbAuth = firebase.auth();
+
+// ── DOM refs ──
+const eyeL          = document.getElementById('eye-l');
+const eyeR          = document.getElementById('eye-r');
+const face          = document.getElementById('face');
+const statusEl      = document.getElementById('status');
+const transcriptEl  = document.getElementById('transcript-bubble');
+const micRing       = document.getElementById('mic-ring');
+
+/* ════════════════════════════════════════
+   1. EMOTION ENGINE
+════════════════════════════════════════ */
+const EmotionEngine = (() => {
+  let current = 'idle';
+  let returnTimer = null;
+
+  function set(emotion, duration = null) {
+    current = emotion;
+    document.body.setAttribute('data-emotion', emotion);
+    if (returnTimer) clearTimeout(returnTimer);
+    if (duration) returnTimer = setTimeout(() => set('idle'), duration);
+  }
+
+  function get() { return current; }
+  return { set, get };
+})();
+
+/* ════════════════════════════════════════
+   2. BLINK ENGINE
+════════════════════════════════════════ */
+const BlinkEngine = (() => {
+  function blink() {
+    if (['sad','surprised'].includes(EmotionEngine.get())) { schedule(); return; }
+    eyeL.classList.add('blink'); eyeR.classList.add('blink');
+    setTimeout(() => {
+      eyeL.classList.remove('blink'); eyeR.classList.remove('blink');
+      eyeL.classList.add('blink-open'); eyeR.classList.add('blink-open');
+      setTimeout(() => {
+        eyeL.classList.remove('blink-open'); eyeR.classList.remove('blink-open');
+        schedule();
+      }, 120);
+    }, 100);
+  }
+  function schedule() { setTimeout(blink, 4000 + Math.random() * 5000); }
+  function start()    { schedule(); }
+  return { start };
+})();
+
+/* ════════════════════════════════════════
+   3. IDLE ENGINE
+════════════════════════════════════════ */
+const IdleEngine = (() => {
+  function glance() {
+    if (EmotionEngine.get() !== 'idle') { scheduleGlance(); return; }
+    const dir = Math.random() < 0.5 ? 'glance-left' : 'glance-right';
+    eyeL.classList.add(dir); eyeR.classList.add(dir);
+    setTimeout(() => {
+      eyeL.classList.remove(dir); eyeR.classList.remove(dir);
+      scheduleGlance();
+    }, 700 + Math.random() * 700);
+  }
+  function scheduleGlance() { setTimeout(glance, 5000 + Math.random() * 8000); }
+
+  function drift() {
+    if (EmotionEngine.get() !== 'idle') { face.style.transform = ''; scheduleDrift(); return; }
+    face.style.transition = 'transform 3s ease-in-out';
+    face.style.transform  = `translate(${(Math.random()-0.5)*6}px,${(Math.random()-0.5)*4}px)`;
+    scheduleDrift();
+  }
+  function scheduleDrift() { setTimeout(drift, 3000 + Math.random() * 4000); }
+
+  function start() { scheduleGlance(); scheduleDrift(); }
+  return { start };
+})();
+
+/* ════════════════════════════════════════
+   4. ISLAND ENGINE
+════════════════════════════════════════ */
+const IslandEngine = (() => {
+  const island = document.getElementById('island');
+  const iconEl = document.getElementById('island-icon');
+  const textEl = document.getElementById('island-text');
+
+  let queue = [];
+  let busy  = false;
+
+  function enqueue(icon, text, emotion) {
+    queue.push({ icon, text, emotion });
+    if (!busy) processNext();
+  }
+
+  function processNext() {
+    if (!queue.length) { busy = false; return; }
+    busy = true;
+    run(queue.shift());
+  }
+
+  function run({ icon, text, emotion }) {
+    eyeL.classList.add('look-up');
+    eyeR.classList.add('look-up');
+    face.classList.add('look-up');
+
+    iconEl.textContent = icon;
+    textEl.textContent = text;
+    island.className = 'dot';
+
+    setTimeout(() => {
+      island.className = 'expanded';
+      setTimeout(() => EmotionEngine.set(emotion), 300);
+      setTimeout(collapse, 2600);
+    }, 200);
+  }
+
+  function collapse() {
+    island.className = 'dot';
+    setTimeout(() => {
+      eyeL.classList.remove('look-up');
+      eyeR.classList.remove('look-up');
+      face.classList.remove('look-up');
+      EmotionEngine.set('idle');
+    }, 180);
+    setTimeout(() => {
+      island.className = 'gone';
+      setTimeout(processNext, 150);
+    }, 340);
+  }
+
+  return { notify: enqueue };
+})();
+
+/* ════════════════════════════════════════
+   5. TTS ENGINE
+════════════════════════════════════════ */
+const TTSEngine = (() => {
+  function speak(text) {
+    if (!text) return;
+    window.speechSynthesis.cancel();
+
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate   = 1.05;
+    utt.pitch  = 1.1;
+    utt.volume = 1;
+
+    // Pick a decent voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v =>
+      v.name.includes('Google') || v.name.includes('Samantha') || v.lang === 'en-US'
+    );
+    if (preferred) utt.voice = preferred;
+
+    utt.onstart = () => EmotionEngine.set('speaking');
+    utt.onend   = () => {
+      EmotionEngine.set('idle');
+      setStatus('tap to speak');
+    };
+
+    window.speechSynthesis.speak(utt);
+  }
+
+  return { speak };
+})();
+
+/* ════════════════════════════════════════
+   6. WEBSOCKET ENGINE
+════════════════════════════════════════ */
+const WSEngine = (() => {
+  let ws        = null;
+  let authToken = null;
+  let reconnectTimer = null;
+
+  function init(token) {
+    authToken = token;
+    connect();
+  }
+
+  function connect() {
+    if (ws && ws.readyState === WebSocket.OPEN) return;
+
+    ws = new WebSocket(RAILWAY_WS);
+
+    ws.onopen = () => {
+      console.log('WS connected');
+      // Send auth token as first message
+      ws.send(JSON.stringify({ type: 'auth', token: authToken }));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        handleResponse(data);
+      } catch(e) {
+        console.error('WS parse error:', e);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('WS closed — reconnecting in 3s');
+      reconnectTimer = setTimeout(connect, 3000);
+    };
+
+    ws.onerror = (e) => {
+      console.error('WS error:', e);
+    };
+  }
+
+  function send(text) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      notify('⚠️', 'Not connected', 'sad');
+      return;
+    }
+    ws.send(JSON.stringify({ message: text }));
+  }
+
+  function handleResponse(data) {
+    // data could be string reply or structured {reply, emotion, notification}
+    let reply      = '';
+    let emotion    = 'happy';
+    let notifText  = '';
+    let notifIcon  = '💬';
+
+    if (typeof data === 'string') {
+      reply = data;
+    } else {
+      reply      = data.reply      || data.message || data.response || '';
+      emotion    = data.emotion    || 'happy';
+      notifText  = data.notification || '';
+      notifIcon  = data.icon        || '💬';
+    }
+
+    if (!reply) return;
+
+    // Show notification if provided, else show truncated reply
+    const displayText = notifText || (reply.length > 32 ? reply.slice(0,30)+'…' : reply);
+    IslandEngine.notify(notifIcon, displayText, emotion);
+
+    // Speak the reply
+    setTimeout(() => TTSEngine.speak(reply), 600);
+  }
+
+  return { init, send };
+})();
+
+/* ════════════════════════════════════════
+   7. VOICE ENGINE (Web Speech API)
+════════════════════════════════════════ */
+const VoiceEngine = (() => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { console.warn('SpeechRecognition not supported'); return { start: () => {} }; }
+
+  let recognition = null;
+  let listening   = false;
+
+  function build() {
+    recognition = new SR();
+    recognition.lang        = 'en-US';
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    recognition.continuous  = false;
+
+    recognition.onstart = () => {
+      listening = true;
+      EmotionEngine.set('listening');
+      micRing.classList.add('active');
+      setStatus('listening…');
+      showTranscript('');
+    };
+
+    recognition.onresult = (e) => {
+      let interim = '', final = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        e.results[i].isFinal ? (final += t) : (interim += t);
+      }
+      showTranscript(final || interim);
+      if (final) {
+        onFinal(final.trim());
+      }
+    };
+
+    recognition.onerror = (e) => {
+      console.error('SR error:', e.error);
+      stopListening();
+      if (e.error === 'no-speech') {
+        IslandEngine.notify('👂', 'Nothing heard — try again', 'sad');
+      }
+    };
+
+    recognition.onend = () => {
+      listening = false;
+      micRing.classList.remove('active');
+    };
+  }
+
+  function onFinal(text) {
+    if (!text) return;
+    stopListening();
+    EmotionEngine.set('thinking');
+    setStatus('thinking…');
+    showTranscript(text);
+    IslandEngine.notify('🔍', text.length > 28 ? text.slice(0,26)+'…' : text, 'thinking');
+
+    // Send to Railway
+    setTimeout(() => WSEngine.send(text), 300);
+
+    // Hide transcript after a moment
+    setTimeout(() => hideTranscript(), 3000);
+  }
+
+  function start() {
+    if (listening) { stop(); return; }
+    // Rebuild each time to avoid browser state issues
+    build();
+    try { recognition.start(); }
+    catch(e) { console.error('SR start failed:', e); }
+  }
+
+  function stop() {
+    if (recognition) recognition.stop();
+    stopListening();
+  }
+
+  function stopListening() {
+    listening = false;
+    micRing.classList.remove('active');
+    setStatus('tap to speak');
+  }
+
+  return { start, stop };
+})();
+
+/* ════════════════════════════════════════
+   8. UI HELPERS
+════════════════════════════════════════ */
+function setStatus(text) {
+  statusEl.textContent = text;
+  statusEl.classList.toggle('visible', text !== 'tap to speak');
+}
+
+function showTranscript(text) {
+  if (!text) return;
+  transcriptEl.textContent = text;
+  transcriptEl.classList.add('show');
+}
+
+function hideTranscript() {
+  transcriptEl.classList.remove('show');
+}
+
+/* ════════════════════════════════════════
+   9. FIREBASE LOGIN
+════════════════════════════════════════ */
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+
+  if (!email || !pass) { errEl.textContent = 'Enter email and password.'; return; }
+  errEl.textContent = '';
+
+  try {
+    const cred  = await fbAuth.signInWithEmailAndPassword(email, pass);
+    const token = await cred.user.getIdToken();
+
+    // Hide login, show main
+    document.getElementById('login-screen').classList.add('hide');
+    const main = document.getElementById('main-screen');
+    main.classList.add('show');
+
+    // Boot face systems
+    EmotionEngine.set('idle');
+    BlinkEngine.start();
+    IdleEngine.start();
+
+    // Connect WebSocket
+    WSEngine.init(token);
+
+    // Welcome
+    setTimeout(() => {
+      const name = cred.user.displayName
+        ? cred.user.displayName.split(' ')[0]
+        : 'there';
+      IslandEngine.notify('👋', `Hey ${name}, I'm awake!`, 'happy');
+      setTimeout(() => TTSEngine.speak(`Hey ${name}! I'm Rexy, tap me anytime.`), 800);
+    }, 800);
+
+  } catch(err) {
+    console.error(err);
+    const msgs = {
+      'auth/invalid-credential':   'Wrong email or password.',
+      'auth/user-not-found':       'No account found.',
+      'auth/wrong-password':       'Wrong password.',
+      'auth/invalid-email':        'Invalid email format.',
+      'auth/too-many-requests':    'Too many attempts — try later.',
+    };
+    errEl.textContent = msgs[err.code] || 'Login failed. Try again.';
+  }
+}
+
+// Allow Enter key on login
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+/* ════════════════════════════════════════
+   10. TAP TO SPEAK
+════════════════════════════════════════ */
+document.getElementById('scene').addEventListener('click', () => {
+  // Don't trigger during speaking or thinking
+  if (['speaking','thinking'].includes(EmotionEngine.get())) return;
+  VoiceEngine.start();
+});
+
+</script>
+</body>
+</html>

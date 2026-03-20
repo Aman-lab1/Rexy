@@ -30,7 +30,9 @@ from modules.chat_intent import ChatHandler
 from modules.react_engine import ReActEngine
 from rate_limiter import RateLimiter
 from modules.plugin_manager import PluginManager
+from modules.smart_gate import SmartGate
 import io
+
 
 # ─────────────────────────────────────────────
 # WINDOWS UTF-8 FIX (keeps terminal from crying)
@@ -71,7 +73,7 @@ VALID_INTENTS = {
     "CHAT", "EMOTION_SUPPORT", "CALCULATOR",
     "GET_TIME", "LIST_FILES", "GREET",
     "RESET", "ADVISOR", "MUSIC",
-    "WEATHER" #plugin
+    "WEATHER", "COMPUTER",
 }
 
 # Risk classification for each intent
@@ -85,7 +87,8 @@ INTENT_RISK = {
     "MUSIC":          "low",
     "RESET":          "low",     # Always ALLOW — no confirmation
     "LIST_FILES":     "medium",
-    "WEATHER": "low",   # plugin
+    "WEATHER": "low",
+    "COMPUTER": "low",   # plugin
 }
 
 # =============================================================================
@@ -317,65 +320,50 @@ STRICT RULES:
 
 
     @staticmethod
-    def detect(message: str, history: List[Dict]) -> Dict[str, Any]:
+    def detect(message: str, history: list) -> dict:
         """
-        Run THINK stage. Returns intent_data dict with intent, emotion,
-        confidence, and reliability fields.
-
-        Layer 1: Fast deterministic pre-checks (regex, no LLM needed)
-        Layer 2: Ollama LLM for everything else
+        THINK stage — two-layer intent detection.
+ 
+        Layer 0: SmartGate  — deterministic, no LLM, ~0ms
+        Layer 1: Groq LLM   — only fires when Layer 0 returns None
+ 
+        Returns standard intent_data dict:
+        {
+            "intent":      str,
+            "emotion":     str,
+            "confidence":  float,
+            "reliability": str,   # "GATE_EXACT" | "GATE_REGEX" | "HIGH" | "LOW" | ...
+            "args":        dict
+        }
         """
-        message_lower = message.lower().strip()
-
-        # ── PRE-CHECK 1: Math expression (digits + operators) ──
-        # Catches "10+5", "3 * 4", "100 - 50 / 2" etc.
-        if re.search(r'\d[\d\s]*[\+\-\*\/][\d\s]*\d', message_lower):
-            return {"intent": "CALCULATOR", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
-
-        # ── PRE-CHECK 2: calc/calculate keyword ──
-        if re.search(r'\b(calc|calculate)\b', message_lower):
-            return {"intent": "CALCULATOR", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
-
-        # ── PRE-CHECK 3: Explicit search trigger ──
-        # "search X", "look up X", "google X" → always WEB_SEARCH
-        if re.search(r'^\s*(search|look\s*up|google)\b', message_lower):
-            return {"intent": "WEB_SEARCH", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
-
-        # ── PRE-CHECK 4: Inbox → FILE_READ ──
-        if re.search(r'\binbox\b', message_lower):
-            return {"intent": "FILE_READ", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
-
-        # ── PRE-CHECK 5: "memory usage" → SYSTEM_INFO (hardware, not memory plugin) ──
-        if re.search(r'\bmemory\s+usage\b', message_lower):
-            return {"intent": "SYSTEM_INFO", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
-
-        # ── PRE-CHECK 6: "what time is it in X" → CHAT (timezone question, not local time) ──
-        # Must come BEFORE the general GET_TIME check
-        if re.search(r'\bwhat time is it\s+in\s+\w+', message_lower):
-            return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
-        # ── PRE-CHECK 7: "what time is it" → GET_TIME (local time) ──
-        if re.search(r'\bwhat time is it\b', message_lower):
-            return {"intent": "GET_TIME", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
-
-        # ── PRE-CHECK 8: Weather keywords ──
-        if re.search(r'\b(weather|temperature|forecast|is it raining)\b', message_lower):
-            return {"intent": "WEATHER", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
-
-        # ── PRE-CHECK 9: Explicit memory phrases ──
-        if re.search(r'\b(remember that|remind me|don\'t forget|what do you remember|forget about)\b', message_lower):
-            return {"intent": "MEMORY", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
-
-        # ── PRE-CHECK 10: State/mode commands → CHAT (not MEMORY) ──
-        if re.search(r'\b(go to|switch to|set|enter)\b.{0,20}\b(state|mode)\b', message_lower):
-            return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.99, "reliability": "HIGH", "args": {}}
-
-        # ── LLM DETECTION (Ollama) ──
-        # Only runs if no pre-check matched above
+        # ── LAYER 0: SmartGate ──────────────────────────────────
+        # Check deterministic patterns before spending a Groq token.
+        # For ~70% of messages, this is all we need.
+        gate_result = SmartGate.check(message)
+        if gate_result is not None:
+            logger.info(
+                f"GATE HIT | intent={gate_result['intent']} | "
+                f"reliability={gate_result['reliability']} | "
+                f"groq_saved=True"
+            )
+            emit("GATE_HIT", {
+                "intent":      gate_result["intent"],
+                "reliability": gate_result["reliability"],
+                "args":        gate_result["args"],
+            })
+            return gate_result
+ 
+        # ── LAYER 1: Groq LLM ──────────────────────────────────
+        # Gate didn't recognise it — this message needs reasoning.
+        # Log the call so we can track Groq usage over time.
+        logger.info("GATE MISS | calling Groq...")
+        emit("LLM_CALL", {"reason": "gate_miss", "message_len": len(message)})
+ 
         try:
             recent_history = history[-2:] if history else []
             raw = groq_client.chat(
                 messages=[
-                    {"role": "system", "content": IntentDetector.SYSTEM_PROMPT},
+                    {"role": "system",  "content": IntentDetector.SYSTEM_PROMPT},
                     {
                         "role": "user",
                         "content": (
@@ -388,42 +376,41 @@ STRICT RULES:
             )
             if raw is None:
                 raise Exception("Groq returned None")
-
-            # Strip markdown fences if Ollama adds them (it sometimes does)
+ 
+            # Strip markdown fences if present
             raw = re.sub(r'```(?:json)?', '', raw).strip()
-
             result = json.loads(raw)
-
+ 
             intent = result.get("intent", "CHAT").upper()
             if intent not in VALID_INTENTS:
                 logger.warning(f"LLM returned unknown intent '{intent}', falling back to CHAT")
                 return {
-                    "intent": "CHAT",
-                    "emotion": "neutral",
-                    "confidence": 0.3,
+                    "intent":      "CHAT",
+                    "emotion":     "neutral",
+                    "confidence":  0.3,
                     "reliability": "MALFORMED_INTENT",
-                    "args": {}   # ← add this   
+                    "args":        {}
                 }
-
+ 
             emotion    = result.get("emotion", "neutral")
             confidence = max(0.0, min(1.0, float(result.get("confidence", 0.5))))
             reliability = "HIGH" if confidence >= CONFIDENCE_THRESHOLD else "LOW"
-            args       = result.get("args", {})  # ← ADD THIS
-            if not isinstance(args, dict):       # ← safety check
+            args       = result.get("args", {})
+            if not isinstance(args, dict):
                 args = {}
-
+ 
             return {
                 "intent":      intent,
                 "emotion":     emotion,
                 "confidence":  confidence,
                 "reliability": reliability,
-                "args":        args           # ← ADD THIS
+                "args":        args
             }
-
+ 
         except json.JSONDecodeError as e:
             logger.warning(f"IntentDetector JSON parse error: {e}")
             return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.2, "reliability": "JSON_ERROR", "args": {}}
-  
+ 
         except Exception as e:
             logger.warning(f"IntentDetector Groq error: {e}")
             return {"intent": "CHAT", "emotion": "neutral", "confidence": 0.1, "reliability": f"EXCEPTION:{str(e)[:30]}", "args": {}}
@@ -457,6 +444,11 @@ class SafetyVerifier:
         confidence = intent_data["confidence"]
         reliability = intent_data.get("reliability", "HIGH")
 
+        # ── Rule 0: Gate results are always trusted ──────────────
+        # GATE_EXACT and GATE_REGEX are deterministic — no LLM uncertainty
+        if reliability in ("GATE_EXACT", "GATE_REGEX"):
+            return {"decision": "ALLOW", "reason": f"Gate-matched intent always allowed: {intent}"}
+        
         # ── Rule 1: CHAT and GREET are ALWAYS allowed ──
         # These are safe, conversational. Never block them.
         if intent in ("CHAT", "GREET"):
@@ -866,6 +858,12 @@ VALID_INTENTS.update(PLUGIN_MANAGER.get_all_intents())
 INTENT_RISK.update(PLUGIN_MANAGER.get_risk_levels())
 
 app = FastAPI(title="Rexy AI Assistant", version="4.0")
+from fastapi.staticfiles import StaticFiles
+app.mount("/static", StaticFiles(directory="static"), name="static")
+@app.get("/gate-stats")
+async def gate_stats():
+    """Returns SmartGate efficiency stats. Useful for monitoring."""
+    return SmartGate.stats()
 
 @app.get("/")
 async def get_index():
@@ -939,6 +937,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # One rate limiter per connection
     limiter = RateLimiter()
+    MAX_MESSAGE_LEN = 1500   
 
     try:
         while True:
@@ -949,10 +948,27 @@ async def websocket_endpoint(websocket: WebSocket):
             if not message:
                 continue
 
-            # ── INPUT SANITIZATION ──
-            if len(message) > 1000:
+            # ── INPUT SIZE LIMITS ──────────────────────────────────
+            # Hard cap: 1500 chars for normal messages.
+            # Code analysis cap: 300 lines (~12000 chars) is handled
+            # at the plugin level, not here. Here we block giant pastes.
+            # chars — tighter than old 1000? No — 1500 is slightly more generous for natural speech
+            # If you want tighter, drop to 800. The key insight: a sentence
+            # is ~80 chars, so 1500 ≈ ~18 sentences — plenty for any real question.
+ 
+            if len(message) > MAX_MESSAGE_LEN:
+                emit("INPUT_REJECTED", {
+                    "reason":   "message_too_long",
+                    "length":   len(message),
+                    "limit":    MAX_MESSAGE_LEN,
+                    "uid":      uid,
+                })
                 await websocket.send_text(json.dumps({
-                    "reply":   "⚠️ Message too long. Please keep it under 1000 characters.",
+                    "reply":   (
+                        f"⚠️ That's a bit long ({len(message)} chars). "
+                        f"Keep messages under {MAX_MESSAGE_LEN} characters — "
+                        f"break it into smaller pieces if needed!"
+                    ),
                     "emotion": "neutral",
                     "state":   "speaking",
                     "intent":  "CHAT",
@@ -973,7 +989,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 continue
 
             logger.info(f"USER: {message}")
-            result = await process_message(message, session)
+            from observer import timed
+            with timed("full_pipeline", uid=uid, intent="unknown"):
+                result = await process_message(message, session)
 
             response = {
                 "reply":   result["reply"],
@@ -990,6 +1008,63 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.info(f"WebSocket disconnected — uid: {uid}")
     except Exception as e:
         logger.error(f"WebSocket error: {e}", exc_info=True)
+
+@app.websocket("/ws-agent")
+async def agent_endpoint(websocket: WebSocket):
+    """
+    WebSocket endpoint for rexy_local_agent.py.
+    """
+    from modules.plugins.computer_plugin import (
+        get_agent_queue, _pending_commands, _connected_agents
+    )
+
+    await websocket.accept()
+    agent_id = id(websocket)
+    _connected_agents.add(agent_id)
+    logger.info(f"Local agent connected — id: {agent_id}")
+
+    queue = get_agent_queue()
+
+    try:
+        async def send_commands():
+            while True:
+                item = await queue.get()
+                await websocket.send_text(json.dumps({
+                    "type":    "command",
+                    "cmd_id":  item["cmd_id"],
+                    "command": item["command"]
+                }))
+
+        async def receive_results():
+            while True:
+                try:
+                    raw = await websocket.receive_text()
+                    msg = json.loads(raw)
+                    if msg.get("type") == "result":
+                        cmd_id = msg.get("cmd_id", "")
+                        future = _pending_commands.get(cmd_id)
+                        if future and not future.done():
+                            future.set_result({
+                                "success": msg.get("success", False),
+                                "message": msg.get("message", ""),
+                                "data":    msg.get("data", {})
+                            })
+                    elif msg.get("type") == "agent_hello":
+                        logger.info(f"Agent hello — platform: {msg.get('platform')}")
+                except json.JSONDecodeError:
+                    pass
+                except Exception:
+                    break
+                
+        await asyncio.gather(send_commands(), receive_results())
+
+    except WebSocketDisconnect:
+        logger.info(f"Local agent disconnected — id: {agent_id}")
+    except Exception as e:
+        logger.error(f"Agent WebSocket error: {e}")
+    finally:
+        _connected_agents.discard(agent_id)
+
 
 # =============================================================================
 # ENTRY POINT
