@@ -718,6 +718,7 @@ async function doLogin() {
   errEl.textContent = '';
 
   try {
+    await fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     const cred  = await fbAuth.signInWithEmailAndPassword(email, pass);
     const token = await cred.user.getIdToken();
 
@@ -756,6 +757,21 @@ document.getElementById('scene').addEventListener('click', () => {
   if (['speaking', 'thinking'].includes(EmotionEngine.get())) return;
   if (document.body.getAttribute('data-speaking') === 'true') return;
   VoiceEngine.start();
+});
+
+fbAuth.onAuthStateChanged(async (user) => {
+  if (user) {
+    const token = await user.getIdToken();
+    document.getElementById('login-screen').classList.add('hide');
+    document.getElementById('main-screen').classList.add('show');
+    EmotionEngine.set('idle');
+    BlinkEngine.start();
+    IdleEngine.start();
+    WSEngine.init(token);
+    setTimeout(() => {
+      IslandEngine.notify('👋', "Hey, I'm awake!", 'happy');
+    }, 800);
+  }
 });
 </script>
 </body>

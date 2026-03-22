@@ -548,8 +548,14 @@ Rules:
             return True
 
         if not os.path.exists(TOKEN_FILE):
-            logger.warning("google_token.json not found — run: python scripts/google_auth_setup.py")
-            return False
+            token_json = os.environ.get("GOOGLE_TOKEN_JSON", "")
+            if token_json:
+                with open(TOKEN_FILE, "w") as f:
+                    f.write(token_json)
+                logger.info("Google token loaded from environment variable.")
+            else:
+                logger.warning("google_token.json not found — run: python scripts/google_auth_setup.py")
+                return False
 
         try:
             creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)  # type: ignore
