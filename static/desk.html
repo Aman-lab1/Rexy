@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="manifest" href="/static/manifest.json"/>
+  <meta name="theme-color" content="#000000"/>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
   <meta name="mobile-web-app-capable" content="yes"/>
@@ -459,11 +461,24 @@ const TTSEngine = (() => {
     utt.pitch  = 1.1;
     utt.volume = 1;
 
+  const setVoice = () => {
     const voices = window.speechSynthesis.getVoices();
     const preferred = voices.find(v =>
-      v.name.includes('Google') || v.name.includes('Samantha') || v.lang === 'en-US'
-    );
+      v.name.includes('Google UK English Female') ||
+      v.name.includes('Samantha') ||
+      v.name.includes('Karen') ||
+      v.name.includes('Veena') ||
+      (v.lang === 'en-US' && v.name.toLowerCase().includes('female'))
+    ) || voices.find(v => v.lang === 'en-US' && v.gender === 'female')
+      || voices.find(v => v.lang === 'en-IN');
     if (preferred) utt.voice = preferred;
+  };
+
+  if (window.speechSynthesis.getVoices().length) {
+    setVoice();
+  } else {
+    window.speechSynthesis.onvoiceschanged = setVoice;
+  }
 
     utt.onstart = () => {
       // Eyes show the response emotion, mouth pulses
