@@ -312,7 +312,9 @@ class SmartGate:
         (
             r'\b(set\s+brightness|brightness\s+(to|up|down|at)|'
             r'increase\s+brightness|decrease\s+brightness|'
-            r'lower\s+brightness|raise\s+brightness|dim\s+(the\s+)?screen)\b',
+            r'lower\s+brightness|raise\s+brightness|dim\s+(the\s+)?screen|'
+            r'brightness|screen\s+brightness|'
+            r'(increase|decrease|lower|raise|set)\s+(the\s+)?brightness)\b',
             "COMPUTER",
             None
         ),

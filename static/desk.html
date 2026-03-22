@@ -452,33 +452,49 @@ const IslandEngine = (() => {
    5. TTS ENGINE
 ════════════════════════════ */
 const TTSEngine = (() => {
+  function cleanForSpeech(text) {
+  return text
+    // Remove emojis
+    .replace(/[\u{1F000}-\u{1FFFF}|\u{2600}-\u{26FF}|\u{2700}-\u{27BF}|\u{FE00}-\u{FEFF}|\u{1F900}-\u{1F9FF}|\u{1FA00}-\u{1FA9F}]/gu, '')
+    // Remove markdown bold/italic
+    .replace(/\*\*/g, '').replace(/\*/g, '')
+    // Remove bullet points
+    .replace(/^[\s•\-–]+/gm, '')
+    // Remove URLs
+    .replace(/https?:\/\/\S+/g, '')
+    // Clean multiple spaces/newlines
+    .replace(/\n+/g, '. ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
   function speak(text, emotion = 'idle') {
-    if (!text) return;
-    window.speechSynthesis.cancel();
+      if (!text) return;
+      const cleanText = cleanForSpeech(text);
+      window.speechSynthesis.cancel();
+      const utt = new SpeechSynthesisUtterance(cleanText);
+      utt.rate   = 1.05;
+      utt.pitch  = 1.1;
+      utt.volume = 1;
 
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate   = 1.05;
-    utt.pitch  = 1.1;
-    utt.volume = 1;
+      const setVoice = () => {
+        const voices = window.speechSynthesis.getVoices();
+        const preferred = voices.find(v =>
+          v.name.includes('Google UK English Female') ||
+          v.name.includes('Samantha') ||
+          v.name.includes('Karen') ||
+          v.name.includes('Veena') ||
+          (v.lang === 'en-US' && v.name.toLowerCase().includes('female'))
+        ) || voices.find(v => v.lang === 'en-US' && v.gender === 'female')
+          || voices.find(v => v.lang === 'en-IN');
+        if (preferred) utt.voice = preferred;
+      };
 
-  const setVoice = () => {
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v =>
-      v.name.includes('Google UK English Female') ||
-      v.name.includes('Samantha') ||
-      v.name.includes('Karen') ||
-      v.name.includes('Veena') ||
-      (v.lang === 'en-US' && v.name.toLowerCase().includes('female'))
-    ) || voices.find(v => v.lang === 'en-US' && v.gender === 'female')
-      || voices.find(v => v.lang === 'en-IN');
-    if (preferred) utt.voice = preferred;
-  };
-
-  if (window.speechSynthesis.getVoices().length) {
-    setVoice();
-  } else {
-    window.speechSynthesis.onvoiceschanged = setVoice;
-  }
+      if (window.speechSynthesis.getVoices().length) {
+        setVoice();
+      } else {
+        window.speechSynthesis.onvoiceschanged = setVoice;
+      }
 
     utt.onstart = () => {
       // Eyes show the response emotion, mouth pulses
