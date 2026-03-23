@@ -89,29 +89,49 @@
     /* ── Face ── */
     #face {
       display: flex; flex-direction: column; align-items: center; gap: 36px;
-      animation: breathe 4s ease-in-out infinite;
       will-change: transform;
     }
 
-    @keyframes breathe {
-      0%, 100% { transform: scale(1);     }
-      50%       { transform: scale(1.018);}
-    }
-
+    #face.idle-anim { animation: breathe 4s ease-in-out infinite; }
+    #face.doze-anim { animation: doze-sway 7s ease-in-out infinite; }
     #face.look-up {
-      animation: none;
+      animation: none !important;
       transform: translateY(-18px) !important;
       transition: transform 500ms cubic-bezier(0.34, 1.3, 0.64, 1) !important;
     }
 
-    /* ── Eyes ── */
-    #eyes { display: flex; align-items: center; gap: var(--eye-gap); }
+    @keyframes breathe {
+      0%, 100% { transform: scale(1);      }
+      50%       { transform: scale(1.018); }
+    }
+    @keyframes doze-sway {
+      0%, 100% { transform: scale(1)     translateY(0);    }
+      30%       { transform: scale(1.006) translateY(-2px); }
+      70%       { transform: scale(0.996) translateY(2px);  }
+    }
 
-    .eye {
-      width:  var(--eye-w);
-      height: var(--eye-h);
-      background: var(--face);
+    /* ── Eyes wrapper ── */
+    #eyes-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Normal eyes row */
+    #eyes {
+      display: flex;
+      align-items: center;
+      gap: var(--eye-gap);
+      transition: opacity 600ms ease;
+    }
+
+    /* ── Eye shell — each eye uses overflow+lid ── */
+    .eye-shell {
+      position: relative;
+      overflow: hidden;
       border-radius: 42px;
+      flex-shrink: 0;
       transition:
         width         400ms cubic-bezier(0.34, 1.56, 0.64, 1),
         height        400ms cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -122,56 +142,121 @@
       transform-origin: center center;
     }
 
-    .eye.blink       { transform: scaleY(0.05) !important; transition: transform 80ms  ease-in  !important; }
-    .eye.blink-open  { transform: scaleY(1)    !important; transition: transform 100ms ease-out !important; }
-    .eye.glance-left  { transform: translateX(-12px); }
-    .eye.glance-right { transform: translateX(12px);  }
-    .eye.look-up      { transform: translateY(-10px) !important; }
+    .eye-fill {
+      width: 100%; height: 100%;
+      background: #ffffff;
+      border-radius: inherit;
+    }
 
-    /* ── EYE EMOTIONS (independent of mouth/speaking) ── */
-    body[data-emotion="idle"]      .eye { width: var(--eye-w); height: var(--eye-h); border-radius: 42px; }
-    body[data-emotion="listening"] .eye { width: 80px; height: 130px; border-radius: 50px; }
-    body[data-emotion="happy"]     .eye { width: 100px; height: 72px; border-radius: 80px 80px 8px 8px; }
-    body[data-emotion="sad"]       .eye { width: 78px; height: 118px; border-radius: 44px 44px 28px 28px / 60px 60px 30px 30px; }
+    /* Eyelid — slides down from top for dozing */
+    .eye-lid {
+      position: absolute;
+      top: 0; left: -1px; right: -1px;
+      height: 0;
+      background: #000000;
+      border-radius: 0 0 6px 6px;
+      transition: height 800ms cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 2;
+    }
+
+    /* Blink */
+    .eye-shell.blink      { transform: scaleY(0.05) !important; transition: transform 80ms ease-in !important; }
+    .eye-shell.blink-open { transform: scaleY(1)    !important; transition: transform 100ms ease-out !important; }
+    .eye-shell.glance-left  { transform: translateX(-12px); }
+    .eye-shell.glance-right { transform: translateX(12px);  }
+    .eye-shell.look-up      { transform: translateY(-10px) !important; }
+
+    /* ── EYE EMOTIONS ── */
+    body[data-emotion="idle"]      .eye-shell { width: var(--eye-w); height: var(--eye-h); border-radius: 42px; }
+    body[data-emotion="listening"] .eye-shell { width: 80px; height: 130px; border-radius: 50px; }
+    body[data-emotion="happy"]     .eye-shell { width: 100px; height: 72px; border-radius: 80px 80px 8px 8px; }
+    body[data-emotion="sad"]       .eye-shell { width: 78px; height: 118px; border-radius: 44px 44px 28px 28px / 60px 60px 30px 30px; }
     body[data-emotion="sad"]     #eye-r { transform: rotate(4deg); }
     body[data-emotion="sad"]     #eye-l { transform: rotate(-4deg); }
     body[data-emotion="thinking"] #eye-l { width: var(--eye-w); height: 44px; border-radius: 28px; }
     body[data-emotion="thinking"] #eye-r { width: var(--eye-w); height: var(--eye-h); border-radius: 42px; }
-    body[data-emotion="surprised"] .eye  { width: 100px; height: 148px; border-radius: 60px; }
+    body[data-emotion="surprised"] .eye-shell { width: 100px; height: 148px; border-radius: 60px; }
+
+    /* Dozing — keep idle size, lids slide down */
+    body[data-emotion="dozing"] .eye-shell { width: var(--eye-w); height: var(--eye-h); border-radius: 42px; }
+    body[data-emotion="dozing"] #eye-l .eye-lid { height: 88px;  }
+    body[data-emotion="dozing"] #eye-r .eye-lid { height: 96px;  }
+    body:not([data-emotion="dozing"]) .eye-lid  { height: 0 !important; }
+
+    /* ── ZZZ ── */
+    #zzz-wrap {
+      position: absolute;
+      top: -20px; right: -54px;
+      opacity: 0;
+      transition: opacity 1000ms ease;
+      pointer-events: none;
+      z-index: 10;
+    }
+    body[data-emotion="dozing"] #zzz-wrap { opacity: 1; }
+
+    .z {
+      position: absolute;
+      color: #ffffff; font-weight: 200;
+      opacity: 0;
+      animation: floatZ 3.4s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .z1 { font-size: 12px; animation-delay: 0s;    top: 0px;   left: 0px;  }
+    .z2 { font-size: 17px; animation-delay: 1.1s;  top: -18px; left: 16px; }
+    .z3 { font-size: 10px; animation-delay: 2.2s;  top: -32px; left: 34px; }
+
+    @keyframes floatZ {
+      0%   { opacity: 0;    transform: translateY(0px)   scale(0.7); }
+      15%  { opacity: 0.55; transform: translateY(-6px)  scale(1);   }
+      75%  { opacity: 0.15; transform: translateY(-28px) scale(0.85);}
+      100% { opacity: 0;    transform: translateY(-44px) scale(0.6); }
+    }
 
     /* ── MOUTH — base states ── */
     #mouth {
       width: 64px; height: 14px;
       background: var(--face);
       border-radius: 12px;
+      align-self: center;
       transition:
         width         400ms cubic-bezier(0.34, 1.56, 0.64, 1),
         height        400ms cubic-bezier(0.34, 1.56, 0.64, 1),
         border-radius 400ms cubic-bezier(0.34, 1.56, 0.64, 1),
-        transform     400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+        transform     400ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        opacity       400ms ease;
     }
 
-    body[data-emotion="idle"]      #mouth { width: 64px;  height: 14px; border-radius: 12px; transform: none; }
-    body[data-emotion="happy"]     #mouth { width: 96px;  height: 20px; border-radius: 0 0 60px 60px / 0 0 28px 28px; }
-    body[data-emotion="sad"]       #mouth { width: 80px;  height: 20px; border-radius: 60px 60px 0 0 / 28px 28px 0 0; }
-    body[data-emotion="thinking"]  #mouth { width: 20px;  height: 20px; border-radius: 50%; transform: translateX(12px); }
-    body[data-emotion="listening"] #mouth { width: 40px;  height: 22px; border-radius: 50%; }
-    body[data-emotion="surprised"] #mouth { width: 52px;  height: 52px; border-radius: 50%; }
+    body[data-emotion="idle"]      #mouth { width: 64px;  height: 14px; border-radius: 12px; transform: none; opacity: 1; }
+    body[data-emotion="happy"]     #mouth { width: 96px;  height: 20px; border-radius: 0 0 60px 60px / 0 0 28px 28px; opacity: 1; }
+    body[data-emotion="sad"]       #mouth { width: 80px;  height: 20px; border-radius: 60px 60px 0 0 / 28px 28px 0 0; opacity: 1; }
+    body[data-emotion="thinking"]  #mouth { width: 20px;  height: 20px; border-radius: 50%; transform: translateX(12px); opacity: 1; }
+    body[data-emotion="listening"] #mouth { width: 40px;  height: 22px; border-radius: 50%; opacity: 1; }
+    body[data-emotion="surprised"] #mouth { width: 52px;  height: 52px; border-radius: 50%; opacity: 1; }
+    body[data-emotion="dozing"]    #mouth { width: 22px;  height: 14px; border-radius: 50%; opacity: 0.45; }
 
-    /* ── SPEAKING OVERLAY — mouth pulses regardless of eye emotion ── */
+    /* ── SPEAKING OVERLAY ── */
     body[data-speaking="true"] #mouth {
-      width: 56px !important;
-      height: 28px !important;
-      border-radius: 50% !important;
-      transform: none !important;
+      width: 56px !important; height: 28px !important;
+      border-radius: 50% !important; transform: none !important;
       animation: speak-pulse 0.4s ease-in-out infinite alternate !important;
       transition: none !important;
     }
-
     @keyframes speak-pulse {
       from { height: 18px; }
       to   { height: 40px; }
     }
+
+    /* ── TIME display ── */
+    #time-display {
+      position: fixed; bottom: 28px; right: 28px;
+      font-size: 15px; font-weight: 300; letter-spacing: 0.14em;
+      color: #333; opacity: 0; transition: opacity 1200ms ease;
+      pointer-events: none; z-index: 100;
+      font-variant-numeric: tabular-nums;
+    }
+    #time-display.visible { opacity: 1; }
+    .digit { display: inline-block; transition: opacity 300ms ease; }
+    .digit.changing { opacity: 0; }
 
     /* ── Mic ring ── */
     #mic-ring {
@@ -215,7 +300,6 @@
       position: fixed; top: 28px; left: 50%; transform: translateX(-50%);
       z-index: 200; pointer-events: none;
     }
-
     #island {
       background: #ffffff; border-radius: 999px;
       display: flex; align-items: center; justify-content: center; overflow: hidden;
@@ -223,11 +307,9 @@
       transition: width 280ms cubic-bezier(0.34,1.3,0.64,1), height 280ms cubic-bezier(0.34,1.3,0.64,1), opacity 180ms ease;
       will-change: width, height, opacity;
     }
-
     #island.dot      { width: 10px;  height: 10px;  opacity: 1; }
     #island.expanded { width: 260px; height: 44px;  opacity: 1; }
     #island.gone     { width: 10px;  height: 10px;  opacity: 0; }
-
     #island-content {
       display: flex; align-items: center; justify-content: center;
       gap: 8px; padding: 0 18px; width: 100%;
@@ -271,6 +353,12 @@
   <div id="vignette"></div>
   <div id="mic-ring"></div>
 
+  <!-- Time display -->
+  <div id="time-display">
+    <span class="digit" id="d-h1"></span><span class="digit" id="d-h2"></span><span style="opacity:0.5">:</span><span class="digit" id="d-m1"></span><span class="digit" id="d-m2"></span>
+  </div>
+
+  <!-- Notification Island -->
   <div id="island-wrap">
     <div id="island" class="gone">
       <div id="island-content">
@@ -280,12 +368,33 @@
     </div>
   </div>
 
+  <!-- Face -->
   <div id="scene">
-    <div id="face">
-      <div id="eyes">
-        <div class="eye" id="eye-l"></div>
-        <div class="eye" id="eye-r"></div>
+    <div id="face" class="idle-anim">
+
+      <!-- Eyes wrapper -->
+      <div id="eyes-wrapper">
+        <div id="eyes">
+          <!-- Left eye shell -->
+          <div class="eye-shell" id="eye-l">
+            <div class="eye-fill"></div>
+            <div class="eye-lid"></div>
+          </div>
+          <!-- Right eye shell -->
+          <div class="eye-shell" id="eye-r">
+            <div class="eye-fill"></div>
+            <div class="eye-lid"></div>
+          </div>
+        </div>
+
+        <!-- ZZZ -->
+        <div id="zzz-wrap">
+          <span class="z z1">z</span>
+          <span class="z z2">z</span>
+          <span class="z z3">z</span>
+        </div>
       </div>
+
       <div id="mouth"></div>
     </div>
   </div>
@@ -295,10 +404,10 @@
 </div>
 
 <script>
-/* ═══════════════════════════════════════════════════
-   REXY DESK BUDDY — Phase 3
-   Firebase | WebSocket | Voice | TTS | Emotion Timing
-═══════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   REXY DESK BUDDY — Full build
+   Firebase | WebSocket | Voice | TTS | Passive Mode
+═══════════════════════════════════════════════════════ */
 
 const FIREBASE_CONFIG = {
   apiKey:     "AIzaSyBJfildiIOb3PeUNDdPaiic2ZoBl_0qg5E",
@@ -331,7 +440,6 @@ const EmotionEngine = (() => {
     if (duration) returnTimer = setTimeout(() => set('idle'), duration);
   }
 
-  // Speaking overlay — animates mouth without touching eye emotion
   function setSpeaking(active) {
     document.body.setAttribute('data-speaking', active ? 'true' : 'false');
   }
@@ -345,8 +453,8 @@ const EmotionEngine = (() => {
 ════════════════════════════ */
 const BlinkEngine = (() => {
   function blink() {
-    if (['sad','surprised'].includes(EmotionEngine.get())) { schedule(); return; }
-    // Don't blink while speaking
+    const e = EmotionEngine.get();
+    if (['sad','surprised','dozing'].includes(e)) { schedule(); return; }
     if (document.body.getAttribute('data-speaking') === 'true') { schedule(); return; }
 
     eyeL.classList.add('blink'); eyeR.classList.add('blink');
@@ -359,9 +467,33 @@ const BlinkEngine = (() => {
       }, 120);
     }, 100);
   }
+
+  // Slow doze blink — lids close fully then reopen to doze position
+  function dozeBlink() {
+    if (EmotionEngine.get() !== 'dozing') return;
+    const lL = eyeL.querySelector('.eye-lid');
+    const lR = eyeR.querySelector('.eye-lid');
+    lL.style.transition = 'height 200ms ease';
+    lR.style.transition = 'height 200ms ease';
+    lL.style.height = '110px';
+    lR.style.height = '110px';
+    setTimeout(() => {
+      lL.style.transition = 'height 300ms ease';
+      lR.style.transition = 'height 300ms ease';
+      lL.style.height = '88px';
+      lR.style.height = '96px';
+      setTimeout(() => {
+        lL.style.transition = '';
+        lR.style.transition = '';
+        if (EmotionEngine.get() === 'dozing')
+          setTimeout(dozeBlink, 6000 + Math.random() * 6000);
+      }, 350);
+    }, 280);
+  }
+
   function schedule() { setTimeout(blink, 4000 + Math.random() * 5000); }
   function start()    { schedule(); }
-  return { start };
+  return { start, dozeBlink };
 })();
 
 /* ════════════════════════════
@@ -399,6 +531,11 @@ const IslandEngine = (() => {
   const iconEl = document.getElementById('island-icon');
   const textEl = document.getElementById('island-text');
 
+  const WAKE_QUIPS = [
+    "still here 👀", "didn't go anywhere", "zzzz... oh hi",
+    "back online", "wakey wakey ✨", "oh, hello there", "i'm back 💫",
+  ];
+
   let queue = [];
   let busy  = false;
 
@@ -424,9 +561,7 @@ const IslandEngine = (() => {
 
     setTimeout(() => {
       island.className = 'expanded';
-      // Set eye emotion when island expands
       setTimeout(() => EmotionEngine.set(emotion), 300);
-      // Collapse island — emotion STAYS, TTS will hold it
       setTimeout(collapse, 2600);
     }, 200);
   }
@@ -437,7 +572,6 @@ const IslandEngine = (() => {
       eyeL.classList.remove('look-up');
       eyeR.classList.remove('look-up');
       face.classList.remove('look-up');
-      // ← No EmotionEngine.set('idle') here — TTS handles the reset
     }, 180);
     setTimeout(() => {
       island.className = 'gone';
@@ -445,66 +579,196 @@ const IslandEngine = (() => {
     }, 340);
   }
 
-  return { notify: enqueue };
+  function showWakeQuip() {
+    const quip = WAKE_QUIPS[Math.floor(Math.random() * WAKE_QUIPS.length)];
+    enqueue('', quip, 'happy');
+  }
+
+  return { notify: enqueue, showWakeQuip };
 })();
 
 /* ════════════════════════════
-   5. TTS ENGINE
+   5. TIME DISPLAY
+════════════════════════════ */
+const TimeDisplay = (() => {
+  const display = document.getElementById('time-display');
+  const digits  = {
+    h1: document.getElementById('d-h1'), h2: document.getElementById('d-h2'),
+    m1: document.getElementById('d-m1'), m2: document.getElementById('d-m2'),
+  };
+  let lastTime = ''; let visible = false; let ticker = null;
+
+  function updateDigit(el, val) {
+    if (el.textContent === val) return;
+    el.classList.add('changing');
+    setTimeout(() => { el.textContent = val; el.classList.remove('changing'); }, 200);
+  }
+
+  function tick() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2,'0');
+    const m = now.getMinutes().toString().padStart(2,'0');
+    const t = h + m;
+    if (t !== lastTime) {
+      updateDigit(digits.h1, h[0]); updateDigit(digits.h2, h[1]);
+      updateDigit(digits.m1, m[0]); updateDigit(digits.m2, m[1]);
+      lastTime = t;
+    }
+  }
+
+  function show() {
+    if (visible) return; visible = true;
+    tick(); display.classList.add('visible');
+    ticker = setInterval(tick, 10000);
+  }
+
+  function hide() {
+    if (!visible) return; visible = false;
+    display.classList.remove('visible');
+    clearInterval(ticker);
+  }
+
+  return { show, hide };
+})();
+
+/* ════════════════════════════
+   6. PASSIVE SYSTEM
+════════════════════════════ */
+const PassiveSystem = (() => {
+  // Real timings
+  const IDLE_AFTER = 45000;   // 45s → go idle
+  const DOZE_AFTER = 600000;  // 10 min → dozing
+  const WAKE_AFTER = 300000;  // 5 min → auto wake
+
+  let stage = 'active';
+  let idleTimer = null, dozeTimer = null, wakeTimer = null;
+
+  function setStage(s) { stage = s; }
+
+  function goIdle() {
+    if (stage !== 'active') return;
+    setStage('idle');
+    EmotionEngine.set('idle');
+    face.className = 'idle-anim';
+    face.style.transform = '';
+    TimeDisplay.show();
+    dozeTimer = setTimeout(goDozing, DOZE_AFTER);
+  }
+
+  function goDozing() {
+    if (stage !== 'idle') return;
+    setStage('dozing');
+    EmotionEngine.set('dozing');
+    face.className = 'doze-anim';
+    face.style.transform = '';
+    setTimeout(() => BlinkEngine.dozeBlink(), 2000);
+    wakeTimer = setTimeout(autoWake, WAKE_AFTER);
+  }
+
+  function autoWake() {
+    if (stage !== 'dozing') return;
+    setStage('waking');
+    EmotionEngine.set('idle');
+    face.className = 'idle-anim';
+    face.style.transform = '';
+
+    setTimeout(() => {
+      const dir = Math.random() < 0.5 ? 'glance-left' : 'glance-right';
+      eyeL.classList.add(dir); eyeR.classList.add(dir);
+      setTimeout(() => {
+        eyeL.classList.remove(dir); eyeR.classList.remove(dir);
+        setTimeout(() => {
+          IslandEngine.showWakeQuip();
+          setStage('idle');
+          dozeTimer = setTimeout(goDozing, DOZE_AFTER);
+        }, 500);
+      }, 1400);
+    }, 900);
+  }
+
+  function surpriseWake() {
+    clearTimeout(wakeTimer); clearTimeout(dozeTimer);
+    setStage('active');
+    EmotionEngine.set('surprised');
+    face.className = 'idle-anim';
+    face.style.transition = 'transform 200ms cubic-bezier(0.34,1.8,0.64,1)';
+    face.style.transform  = 'scale(1.09)';
+    setTimeout(() => {
+      face.style.transform = 'scale(1)';
+      setTimeout(() => {
+        EmotionEngine.set('idle');
+        TimeDisplay.hide();
+      }, 900);
+    }, 260);
+  }
+
+  function onInteract() {
+    clearTimeout(idleTimer); clearTimeout(dozeTimer); clearTimeout(wakeTimer);
+    if (stage === 'dozing') { surpriseWake(); return; }
+    if (stage !== 'active') {
+      setStage('active');
+      EmotionEngine.set('idle');
+      face.className = 'idle-anim';
+      TimeDisplay.hide();
+    }
+    idleTimer = setTimeout(goIdle, IDLE_AFTER);
+  }
+
+  function start() { idleTimer = setTimeout(goIdle, IDLE_AFTER); }
+  return { start, onInteract };
+})();
+
+/* ════════════════════════════
+   7. TTS ENGINE
 ════════════════════════════ */
 const TTSEngine = (() => {
   function cleanForSpeech(text) {
-  return text
-    // Remove emojis
-    .replace(/[\u{1F000}-\u{1FFFF}|\u{2600}-\u{26FF}|\u{2700}-\u{27BF}|\u{FE00}-\u{FEFF}|\u{1F900}-\u{1F9FF}|\u{1FA00}-\u{1FA9F}]/gu, '')
-    // Remove markdown bold/italic
-    .replace(/\*\*/g, '').replace(/\*/g, '')
-    // Remove bullet points
-    .replace(/^[\s•\-–]+/gm, '')
-    // Remove URLs
-    .replace(/https?:\/\/\S+/g, '')
-    // Clean multiple spaces/newlines
-    .replace(/\n+/g, '. ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+    return text
+      .replace(/[\u{1F000}-\u{1FFFF}|\u{2600}-\u{26FF}|\u{2700}-\u{27BF}|\u{FE00}-\u{FEFF}|\u{1F900}-\u{1F9FF}|\u{1FA00}-\u{1FA9F}]/gu, '')
+      .replace(/\*\*/g, '').replace(/\*/g, '')
+      .replace(/^[\s•\-–]+/gm, '')
+      .replace(/https?:\/\/\S+/g, '')
+      .replace(/\n+/g, '. ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
 
   function speak(text, emotion = 'idle') {
-      if (!text) return;
-      const cleanText = cleanForSpeech(text);
-      window.speechSynthesis.cancel();
-      const utt = new SpeechSynthesisUtterance(cleanText);
-      utt.rate   = 1.05;
-      utt.pitch  = 1.1;
-      utt.volume = 1;
+    if (!text) return;
+    const cleanText = cleanForSpeech(text);
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(cleanText);
+    utt.rate   = 0.95;
+    utt.pitch  = 1.0;
+    utt.volume = 1;
 
-      const setVoice = () => {
-        const voices = window.speechSynthesis.getVoices();
-        const preferred = voices.find(v =>
-          v.name.includes('Google UK English Female') ||
-          v.name.includes('Samantha') ||
-          v.name.includes('Karen') ||
-          v.name.includes('Veena') ||
-          (v.lang === 'en-US' && v.name.toLowerCase().includes('female'))
-        ) || voices.find(v => v.lang === 'en-US' && v.gender === 'female')
-          || voices.find(v => v.lang === 'en-IN');
-        if (preferred) utt.voice = preferred;
-      };
+    const setVoice = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = voices.find(v =>
+        v.name.includes('Google UK English Female') ||
+        v.name.includes('Samantha') ||
+        v.name.includes('Karen') ||
+        v.name.includes('Veena') ||
+        (v.lang === 'en-US' && v.name.toLowerCase().includes('female'))
+      ) || voices.find(v => v.lang === 'en-US' && v.gender === 'female')
+        || voices.find(v => v.lang === 'en-IN');
+      if (preferred) utt.voice = preferred;
+    };
 
-      if (window.speechSynthesis.getVoices().length) {
-        setVoice();
-      } else {
-        window.speechSynthesis.onvoiceschanged = setVoice;
-      }
+    if (window.speechSynthesis.getVoices().length) {
+      setVoice();
+    } else {
+      window.speechSynthesis.onvoiceschanged = setVoice;
+    }
 
     utt.onstart = () => {
-      // Eyes show the response emotion, mouth pulses
       EmotionEngine.set(emotion);
       EmotionEngine.setSpeaking(true);
       setStatus('speaking…');
+      PassiveSystem.onInteract(); // Reset passive timer on speak
     };
 
     utt.onend = () => {
-      // Speech done → clear speaking mouth, return to idle
       EmotionEngine.setSpeaking(false);
       EmotionEngine.set('idle');
       setStatus('tap to speak');
@@ -523,121 +787,70 @@ const TTSEngine = (() => {
 })();
 
 /* ════════════════════════════
-   6. WEBSOCKET ENGINE
+   8. WEBSOCKET ENGINE
 ════════════════════════════ */
 const WSEngine = (() => {
   let ws        = null;
   let authToken = null;
 
-  // Map backend emotion values → face emotion states
   const EMOTION_MAP = {
-    'neutral':  'idle',
-    'positive': 'happy',
-    'negative': 'sad',
-    'curious':  'thinking',
-    'error':    'sad',
-    // pass-through values
-    'happy':    'happy',
-    'sad':      'sad',
-    'thinking': 'thinking',
-    'surprised':'surprised',
-    'listening':'listening',
+    'neutral':  'idle',  'positive': 'happy', 'negative': 'sad',
+    'curious':  'thinking', 'error': 'sad',
+    'happy': 'happy', 'sad': 'sad', 'thinking': 'thinking',
+    'surprised': 'surprised', 'listening': 'listening',
   };
 
-  // Map intent → default emotion (fallback if plugin returns neutral)
   const INTENT_EMOTIONS = {
-    'CHAT':        'happy',
-    'WEATHER':     'happy',
-    'CALENDAR':    'happy',
-    'MEMORY':      'happy',
-    'WEB_SEARCH':  'thinking',
-    'COMPUTER':    'happy',
-    'SYSTEM_INFO': 'happy',
-    'FILE_READ':   'thinking',
-    'CALCULATOR':  'happy',
-    'TIME':        'happy',
+    'CHAT': 'happy', 'WEATHER': 'happy', 'CALENDAR': 'happy',
+    'MEMORY': 'happy', 'WEB_SEARCH': 'thinking', 'COMPUTER': 'happy',
+    'SYSTEM_INFO': 'happy', 'FILE_READ': 'thinking',
+    'CALCULATOR': 'happy', 'TIME': 'happy',
   };
 
-  function init(token) {
-    authToken = token;
-    connect();
-  }
+  function init(token) { authToken = token; connect(); }
 
   function connect() {
     if (ws && ws.readyState === WebSocket.OPEN) return;
     ws = new WebSocket(RAILWAY_WS);
-
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'auth', token: authToken }));
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        handleResponse(data);
-      } catch(e) { console.error('WS parse error:', e); }
-    };
-
-    ws.onclose = () => setTimeout(connect, 3000);
-    ws.onerror = (e) => console.error('WS error:', e);
+    ws.onopen    = () => ws.send(JSON.stringify({ type: 'auth', token: authToken }));
+    ws.onmessage = (event) => { try { handleResponse(JSON.parse(event.data)); } catch(e) { console.error('WS parse error:', e); } };
+    ws.onclose   = () => setTimeout(connect, 3000);
+    ws.onerror   = (e) => console.error('WS error:', e);
   }
 
   function send(text) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      IslandEngine.notify('⚠️', 'Not connected', 'sad');
-      return;
-    }
+    if (!ws || ws.readyState !== WebSocket.OPEN) { IslandEngine.notify('⚠️', 'Not connected', 'sad'); return; }
     ws.send(JSON.stringify({ message: text }));
   }
 
   function handleResponse(data) {
-    let reply      = '';
-    let emotion    = 'happy';
-    let notifText  = '';
-    let notifIcon  = '💬';
-    let intent     = '';
-
-    if (typeof data === 'string') {
-      reply = data;
-    } else {
-      reply     = data.reply      || data.message || data.response || '';
-      emotion   = data.emotion    || 'happy';
+    let reply = '', emotion = 'happy', notifText = '', notifIcon = '💬', intent = '';
+    if (typeof data === 'string') { reply = data; }
+    else {
+      reply     = data.reply     || data.message || data.response || '';
+      emotion   = data.emotion   || 'happy';
       notifText = data.notification || '';
-      notifIcon = data.icon        || '💬';
-      intent    = data.intent      || '';
+      notifIcon = data.icon      || '💬';
+      intent    = data.intent    || '';
     }
-
     if (!reply) return;
 
-    // Resolve final face emotion:
-    // 1. Use mapped emotion from backend
-    // 2. Fall back to intent-based emotion
-    // 3. Default happy
     let faceEmotion = EMOTION_MAP[emotion] || emotion;
     if (faceEmotion === 'idle' || faceEmotion === 'neutral') {
       faceEmotion = INTENT_EMOTIONS[intent] || 'happy';
     }
 
-    // Pick notification icon based on intent if not provided
     if (notifIcon === '💬') {
       const intentIcons = {
-        'WEATHER':     '🌤',
-        'CALENDAR':    '📅',
-        'MEMORY':      '💾',
-        'WEB_SEARCH':  '🔍',
-        'COMPUTER':    '💻',
-        'SYSTEM_INFO': '🖥',
-        'FILE_READ':   '📄',
-        'CALCULATOR':  '🧮',
-        'TIME':        '🕐',
+        'WEATHER': '🌤', 'CALENDAR': '📅', 'MEMORY': '💾',
+        'WEB_SEARCH': '🔍', 'COMPUTER': '💻', 'SYSTEM_INFO': '🖥',
+        'FILE_READ': '📄', 'CALCULATOR': '🧮', 'TIME': '🕐',
       };
       notifIcon = intentIcons[intent] || '💬';
     }
 
     const displayText = notifText || (reply.length > 32 ? reply.slice(0, 30) + '…' : reply);
     IslandEngine.notify(notifIcon, displayText, faceEmotion);
-
-    // Pass emotion to TTS — it holds until speech finishes
     setTimeout(() => TTSEngine.speak(reply, faceEmotion), 600);
   }
 
@@ -645,7 +858,7 @@ const WSEngine = (() => {
 })();
 
 /* ════════════════════════════
-   7. VOICE ENGINE
+   9. VOICE ENGINE
 ════════════════════════════ */
 const VoiceEngine = (() => {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -656,10 +869,10 @@ const VoiceEngine = (() => {
 
   function build() {
     recognition = new SR();
-    recognition.lang           = 'en-US';
+    recognition.lang = 'en-US';
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
-    recognition.continuous     = false;
+    recognition.continuous = false;
 
     recognition.onstart = () => {
       listening = true;
@@ -667,6 +880,7 @@ const VoiceEngine = (() => {
       micRing.classList.add('active');
       setStatus('listening…');
       showTranscript('');
+      PassiveSystem.onInteract();
     };
 
     recognition.onresult = (e) => {
@@ -685,10 +899,7 @@ const VoiceEngine = (() => {
       if (e.error === 'no-speech') IslandEngine.notify('👂', 'Nothing heard — try again', 'sad');
     };
 
-    recognition.onend = () => {
-      listening = false;
-      micRing.classList.remove('active');
-    };
+    recognition.onend = () => { listening = false; micRing.classList.remove('active'); };
   }
 
   function onFinal(text) {
@@ -705,8 +916,7 @@ const VoiceEngine = (() => {
   function start() {
     if (listening) { stop(); return; }
     build();
-    try { recognition.start(); }
-    catch(e) { console.error('SR start failed:', e); }
+    try { recognition.start(); } catch(e) { console.error('SR start failed:', e); }
   }
 
   function stop() {
@@ -724,7 +934,7 @@ const VoiceEngine = (() => {
 })();
 
 /* ════════════════════════════
-   8. UI HELPERS
+   10. UI HELPERS
 ════════════════════════════ */
 function setStatus(text) {
   statusEl.textContent = text;
@@ -738,35 +948,36 @@ function showTranscript(text) {
 function hideTranscript() { transcriptEl.classList.remove('show'); }
 
 /* ════════════════════════════
-   9. FIREBASE LOGIN
+   11. FIREBASE LOGIN
 ════════════════════════════ */
+function bootMainScreen(token, name) {
+  document.getElementById('login-screen').classList.add('hide');
+  document.getElementById('main-screen').classList.add('show');
+  EmotionEngine.set('idle');
+  BlinkEngine.start();
+  IdleEngine.start();
+  PassiveSystem.start();
+  WSEngine.init(token);
+  setTimeout(() => {
+    const greeting = name ? `Hey ${name}, I'm awake!` : "Hey, I'm awake!";
+    IslandEngine.notify('👋', greeting, 'happy');
+    const spokenGreeting = name ? `Hey ${name}! Tap me anytime.` : "Hey! Tap me anytime.";
+    setTimeout(() => TTSEngine.speak(spokenGreeting, 'happy'), 800);
+  }, 800);
+}
+
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass  = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-error');
-
   if (!email || !pass) { errEl.textContent = 'Enter email and password.'; return; }
   errEl.textContent = '';
-
   try {
     await fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     const cred  = await fbAuth.signInWithEmailAndPassword(email, pass);
     const token = await cred.user.getIdToken();
-
-    document.getElementById('login-screen').classList.add('hide');
-    document.getElementById('main-screen').classList.add('show');
-
-    EmotionEngine.set('idle');
-    BlinkEngine.start();
-    IdleEngine.start();
-    WSEngine.init(token);
-
-    setTimeout(() => {
-      const name = cred.user.displayName ? cred.user.displayName.split(' ')[0] : 'there';
-      IslandEngine.notify('👋', `Hey ${name}, I'm awake!`, 'happy');
-      setTimeout(() => TTSEngine.speak(`Hey ${name}! Tap me anytime.`, 'happy'), 800);
-    }, 800);
-
+    const name  = cred.user.displayName ? cred.user.displayName.split(' ')[0] : '';
+    bootMainScreen(token, name);
   } catch(err) {
     const msgs = {
       'auth/invalid-credential': 'Wrong email or password.',
@@ -775,34 +986,28 @@ async function doLogin() {
       'auth/invalid-email':      'Invalid email format.',
       'auth/too-many-requests':  'Too many attempts — try later.',
     };
-    errEl.textContent = msgs[err.code] || 'Login failed. Try again.';
+    document.getElementById('login-error').textContent = msgs[err.code] || 'Login failed. Try again.';
   }
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
-/* ════════════════════════════
-   10. TAP TO SPEAK
-════════════════════════════ */
-document.getElementById('scene').addEventListener('click', () => {
-  if (['speaking', 'thinking'].includes(EmotionEngine.get())) return;
-  if (document.body.getAttribute('data-speaking') === 'true') return;
-  VoiceEngine.start();
-});
-
 fbAuth.onAuthStateChanged(async (user) => {
   if (user) {
     const token = await user.getIdToken();
-    document.getElementById('login-screen').classList.add('hide');
-    document.getElementById('main-screen').classList.add('show');
-    EmotionEngine.set('idle');
-    BlinkEngine.start();
-    IdleEngine.start();
-    WSEngine.init(token);
-    setTimeout(() => {
-      IslandEngine.notify('👋', "Hey, I'm awake!", 'happy');
-    }, 800);
+    const name  = user.displayName ? user.displayName.split(' ')[0] : '';
+    bootMainScreen(token, name);
   }
+});
+
+/* ════════════════════════════
+   12. TAP TO SPEAK
+════════════════════════════ */
+document.getElementById('scene').addEventListener('click', () => {
+  PassiveSystem.onInteract();
+  if (['speaking', 'thinking', 'dozing'].includes(EmotionEngine.get())) return;
+  if (document.body.getAttribute('data-speaking') === 'true') return;
+  VoiceEngine.start();
 });
 </script>
 </body>
