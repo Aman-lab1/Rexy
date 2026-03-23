@@ -1,4 +1,4 @@
-# Rexy — Ambient AI Companion
+# Rexy - Ambient AI Companion
 
 > Most AI tools wait to be opened.
 > Rexy is designed to already be there.
@@ -7,13 +7,13 @@
 
 ## The Idea
 
-Every AI assistant today follows the same pattern — you open an app, type a question, get an answer, close it.
+Every AI assistant today follows the same pattern - you open an app, type a question, get an answer, close it.
 
 Rexy is built around a different assumption:
 
 **What if your AI didn't need to be opened?**
 
-Rexy is not a chatbot. She's a persistent, environment-aware companion — deployed in the cloud, living on your desk, learning your patterns, and responding when it matters. Not just when you ask.
+Rexy is not a chatbot. She's a persistent, environment-aware companion - deployed in the cloud, living on your desk, learning your patterns, and responding when it matters. Not just when you ask.
 
 She's less of a tool. More of a presence.
 
@@ -25,9 +25,9 @@ She's less of a tool. More of a presence.
 
 Most assistants send every single message to an LLM. Rexy doesn't.
 
-A custom-built **SmartGate** — a two-layer intent router — intercepts messages before they reach the AI. Simple commands are handled instantly. Only complex, ambiguous, or conversational requests ever touch the model.
+A custom-built **SmartGate** - a two-layer intent router - intercepts messages before they reach the AI. Simple commands are handled instantly. Only complex, ambiguous, or conversational requests ever touch the model.
 
-The result: **~75% fewer LLM calls**, faster responses, and lower cost — without sacrificing intelligence.
+The result: **~75% fewer LLM calls**, faster responses, and lower cost - without sacrificing intelligence.
 
 > Rexy decides *when* to use AI. Not the other way around.
 
@@ -63,14 +63,14 @@ Plugins are modular, isolated, and independently extendable. Adding new capabili
 
 **Desk Buddy** is a tablet-based PWA that gives Rexy physical presence.
 
-Not a chat UI. A companion interface — a living, animated face on your desk that listens, reacts, and stays present even when you're not actively talking to her.
+Not a chat UI. A companion interface - a living, animated face on your desk that listens, reacts, and stays present even when you're not actively talking to her.
 
 - 🎤 Tap-to-speak voice interaction
-- 😊 Full emotion engine — idle, listening, thinking, speaking, happy, sad, surprised
-- 🌙 Passive presence mode — settles into a dozing state when you're away, wakes up when you return
-- 🔔 Notification island — iOS-inspired animated alerts synced to responses
-- 🔐 Firebase persistent login — stays signed in across sessions
-- 📱 Installable PWA — lives on your homescreen, runs fullscreen
+- 😊 Full emotion engine - idle, listening, thinking, speaking, happy, sad, surprised
+- 🌙 Passive presence mode - settles into a dozing state when you're away, wakes up when you return
+- 🔔 Notification island - iOS-inspired animated alerts synced to responses
+- 🔐 Firebase persistent login - stays signed in across sessions
+- 📱 Installable PWA - lives on your homescreen, runs fullscreen
 
 > This is where Rexy stops being software and starts feeling like a companion.
 
@@ -78,7 +78,7 @@ Not a chat UI. A companion interface — a living, animated face on your desk th
 
 ## Architecture
 
-Rexy is built as a distributed system — not a monolith.
+Rexy is built as a distributed system - not a monolith.
 
 ```
 User (Voice / Text)
@@ -110,7 +110,7 @@ User (Voice / Text)
 Rexy is multi-user from the ground up:
 
 - Authenticated WebSocket connections (Firebase token verification)
-- Per-user isolated memory — no cross-user data access
+- Per-user isolated memory - no cross-user data access
 - Rate limiting on all endpoints
 - TLS enforced
 - Path traversal protections
@@ -120,7 +120,7 @@ Rexy is multi-user from the ground up:
 
 ## Current Status
 
-**Phase 5 — Presence**
+**Phase 5 - Presence**
 
 Rexy is live and in active development. Current focus:
 
@@ -144,7 +144,7 @@ Long term    →   Perception, sensors, autonomous environment-aware behavior
 
 The goal isn't to build a better chatbot.
 
-It's to build something that fits quietly into your life — and makes you wonder how you worked without it.
+It's to build something that fits quietly into your life - and makes you wonder how you worked without it.
 
 ---
 
@@ -167,7 +167,7 @@ Rexy is an ongoing experiment in what AI can feel like when it stops being a too
 
 Built by a first-year EEE student with an obsession for building things that feel alive.
 
-Every decision — from the SmartGate architecture to the eyelid animation — was made asking the same question:
+Every decision - from the SmartGate architecture to the eyelid animation - was made asking the same question:
 
 *Does this feel real?*
 
