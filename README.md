@@ -1,213 +1,176 @@
-# Rexy 🤖
+# Rexy — Ambient AI Companion
 
-> A safety-first personal AI assistant with a plugin system. Built by an EEE student who had no business building this. 🔥
-
-Rexy is a fully local, modular AI assistant built in Python. It runs on your own machine using Ollama (no cloud, no API keys for core features), communicates via WebSocket, and speaks using Piper TTS. Every message flows through a strict **THINK → VERIFY → EXECUTE** pipeline before anything happens.
-
----
-
-## ✨ Features
-
-- 🧠 **Local LLM** — powered by Ollama (`llama3.2`), runs 100% offline
-- 🔒 **Safety-first pipeline** — THINK → VERIFY → EXECUTE, every single message
-- ⚡ **Pre-checks** — critical intents caught by regex before LLM is even called
-- 🔌 **Plugin system** — drop a file in `modules/plugins/`, Rexy finds it automatically
-- 💾 **Identity memory** — remembers your name across sessions
-- 🗣️ **Text-to-speech** — non-blocking Piper TTS with pygame
-- 🌐 **WebSocket interface** — real-time communication via FastAPI
-- ✅ **49/49 test cases passing**
+> Most AI tools wait to be opened.
+> Rexy is designed to already be there.
 
 ---
 
-## 🧩 Built-in Intents
+## The Idea
 
-| Intent | Description |
-|--------|-------------|
-| `CHAT` | General conversation via Ollama |
-| `CALCULATOR` | Math expressions with chain mode |
-| `GET_TIME` | Current local time |
-| `LIST_FILES` | List files in current directory |
-| `RESET` | Clear session state |
-| `MUSIC` | Music mode |
-| `ADVISOR` | Activity suggestions when bored |
-| `EMOTION_SUPPORT` | Emotional support responses |
-| `GREET` | Greetings with personality |
+Every AI assistant today follows the same pattern — you open an app, type a question, get an answer, close it.
+
+Rexy is built around a different assumption:
+
+**What if your AI didn't need to be opened?**
+
+Rexy is not a chatbot. She's a persistent, environment-aware companion — deployed in the cloud, living on your desk, learning your patterns, and responding when it matters. Not just when you ask.
+
+She's less of a tool. More of a presence.
 
 ---
 
-## 🔌 Plugins
+## What Makes Rexy Different
 
-| Plugin | Description |
-|--------|-------------|
-| 🌤️ Weather | Live weather via wttr.in (no API key) |
-| 🔍 Web Search | DuckDuckGo Instant Answer API |
-| 🧠 Memory | Remember/recall/forget things across sessions |
-| 📄 File Reader | Read txt, pdf, pptx, docx, csv, json from inbox |
-| 🖥️ System Info | CPU, RAM, battery, disk, uptime via psutil |
+### She doesn't blindly use AI
+
+Most assistants send every single message to an LLM. Rexy doesn't.
+
+A custom-built **SmartGate** — a two-layer intent router — intercepts messages before they reach the AI. Simple commands are handled instantly. Only complex, ambiguous, or conversational requests ever touch the model.
+
+The result: **~75% fewer LLM calls**, faster responses, and lower cost — without sacrificing intelligence.
+
+> Rexy decides *when* to use AI. Not the other way around.
 
 ---
 
-## 🏗️ Architecture
+### She remembers you
+
+Most assistants forget you the moment you close the tab.
+
+Rexy maintains **per-user persistent memory** powered by Supabase. Context carries across sessions. She knows who you are, what you've asked before, and what matters to you.
+
+Every user gets isolated, private storage. No shared context, no data bleed.
+
+---
+
+### She does real things
+
+Rexy isn't limited to conversation. Through a modular plugin system, she can:
+
+- 🌤 Fetch real-time weather (Open-Meteo)
+- 🔍 Search the web live
+- 📅 Read and write Google Calendar events
+- 🧠 Save and recall memory
+- 📁 Read uploaded files
+- 🖥 Report system information
+- 💻 Control your local machine via a WebSocket agent
+
+Plugins are modular, isolated, and independently extendable. Adding new capabilities doesn't touch the core.
+
+---
+
+### She has a face
+
+**Desk Buddy** is a tablet-based PWA that gives Rexy physical presence.
+
+Not a chat UI. A companion interface — a living, animated face on your desk that listens, reacts, and stays present even when you're not actively talking to her.
+
+- 🎤 Tap-to-speak voice interaction
+- 😊 Full emotion engine — idle, listening, thinking, speaking, happy, sad, surprised
+- 🌙 Passive presence mode — settles into a dozing state when you're away, wakes up when you return
+- 🔔 Notification island — iOS-inspired animated alerts synced to responses
+- 🔐 Firebase persistent login — stays signed in across sessions
+- 📱 Installable PWA — lives on your homescreen, runs fullscreen
+
+> This is where Rexy stops being software and starts feeling like a companion.
+
+---
+
+## Architecture
+
+Rexy is built as a distributed system — not a monolith.
 
 ```
-User Message
-     │
-     ▼
-┌─────────────┐
-│    THINK    │  Pre-checks (regex) → LLM intent detection
-└─────────────┘
-     │
-     ▼
-┌─────────────┐
-│   VERIFY    │  ALLOW / CLARIFY / REJECT
-└─────────────┘
-     │
-     ▼
-┌─────────────┐
-│   EXECUTE   │  Route to handler or plugin
-└─────────────┘
-     │
-     ▼
-  Response
+User (Voice / Text)
+        ↓
+  Desk Buddy PWA  ←→  Railway Backend (FastAPI + WebSockets)
+                              ↓
+                        SmartGate Router
+                         ↙          ↘
+                   Plugin System    Groq LLM
+                         ↓
+                    Supabase (Memory)
+                    Firebase (Auth)
 ```
+
+| Layer | Technology |
+|---|---|
+| Backend | FastAPI + WebSockets |
+| LLM | Groq API (llama-3.3-70b-versatile) |
+| Auth | Firebase Authentication |
+| Memory | Supabase (per-user) |
+| Frontend | HTML/CSS/JS PWA |
+| Hosting | Railway |
+| Local Agent | Python WebSocket bridge |
 
 ---
 
-## 📁 File Structure
+## Security
 
-```
-Rexy/
-├── orchestrator.py          # Main pipeline (THINK → VERIFY → EXECUTE)
-├── observer.py              # Passive observability logging
-├── test_rexy.py             # Test harness (49 test cases)
-├── identity.json            # Persisted user identity
-│
-├── modules/
-│   ├── calculator.py        # Calculator with chain mode
-│   ├── chat_intent.py       # Chat intelligence (Ollama)
-│   ├── plugin_base.py       # Base class for all plugins
-│   ├── plugin_manager.py    # Auto-discovery engine
-│   └── plugins/
-│       ├── weather_plugin.py
-│       ├── websearch_plugin.py
-│       ├── memory_plugin.py
-│       ├── filereader_plugin.py
-│       └── sysinfo_plugin.py
-│
-├── config/
-│   └── settings.py
-│
-└── voices/                  # Piper TTS voice models
-```
+Rexy is multi-user from the ground up:
+
+- Authenticated WebSocket connections (Firebase token verification)
+- Per-user isolated memory — no cross-user data access
+- Rate limiting on all endpoints
+- TLS enforced
+- Path traversal protections
+- Credential-free local agent design
 
 ---
 
-## 🚀 Getting Started
+## Current Status
 
-### Prerequisites
-- Python 3.12
-- [Ollama](https://ollama.com/download) with `llama3.2` model
-- [Piper TTS](https://github.com/rhasspy/piper) (for voice output)
+**Phase 5 — Presence**
 
-### Installation
+Rexy is live and in active development. Current focus:
 
-```bash
-# Clone the repo
-git clone https://github.com/Aman-lab1/Rexy.git
-cd Rexy
+- Natural voice interaction
+- Emotional interface refinement  
+- Daily usability and ambient experience
 
-# Create virtual environment
-python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
+---
 
-# Install dependencies
-pip install fastapi uvicorn ollama pygame python-dotenv psutil
+## The Vision
 
-# Optional (for file reading)
-pip install pypdf python-pptx python-docx
+```
+Now          →   Voice-enabled ambient companion with memory and modular intelligence
 
-# Pull the LLM
-ollama pull llama3.2
+Near future  →   Observational memory, proactive nudges, deeper personalization
+
+Mid vision   →   Multi-device presence across physical spaces
+
+Long term    →   Perception, sensors, autonomous environment-aware behavior
 ```
 
-### Run
+The goal isn't to build a better chatbot.
 
-```bash
-# Terminal 1 — start Ollama
-ollama serve
-
-# Terminal 2 — start Rexy
-uvicorn orchestrator:app --host 127.0.0.1 --port 8000 --reload
-```
-
-Then open your browser at `http://localhost:8000`
+It's to build something that fits quietly into your life — and makes you wonder how you worked without it.
 
 ---
 
-## 🧪 Running Tests
+## Getting Started
 
-```bash
-python test_rexy.py
-```
-
-Expected output: **49/49 passed** ✅
+> Setup instructions and self-hosting guide coming soon.
 
 ---
 
-## 🔌 Adding a New Plugin
+## Philosophy
 
-1. Create a file in `modules/plugins/` ending in `_plugin.py`
-2. Inherit from `RexyPlugin`
-3. Implement 5 methods: `intent_name`, `description`, `risk_level`, `intent_examples`, `execute`
-4. Add the intent to `SYSTEM_PROMPT` in `orchestrator.py`
-5. Restart Rexy — plugin is auto-discovered
+> Intelligence is not just about answering.
+> It's about being present, understanding context, and responding at the right moment.
 
-```python
-from modules.plugin_base import RexyPlugin
-
-class JokesPlugin(RexyPlugin):
-    @property
-    def intent_name(self): return "JOKES"
-    
-    @property
-    def description(self): return "Tell a random joke"
-    
-    @property
-    def risk_level(self): return "low"
-    
-    @property
-    def intent_examples(self): return ["tell me a joke", "say something funny"]
-    
-    def execute(self, message, emotion, state):
-        return {"reply": "Why did the EEE student cross the road? To get to the other circuit! 😄", "emotion": "happy", "state": "speaking"}
-```
+Rexy is an ongoing experiment in what AI can feel like when it stops being a tool and starts being a companion.
 
 ---
 
-## 🛠️ Tech Stack
+## Author
 
-| Technology | Purpose |
-|------------|---------|
-| Python 3.12 | Core language |
-| FastAPI | WebSocket server |
-| Ollama + llama3.2 | Local LLM |
-| Piper TTS | Text-to-speech |
-| pygame | Audio playback |
-| psutil | System stats |
-| wttr.in | Weather API |
-| DuckDuckGo API | Web search |
+Built by a first-year EEE student with an obsession for building things that feel alive.
+
+Every decision — from the SmartGate architecture to the eyelid animation — was made asking the same question:
+
+*Does this feel real?*
 
 ---
 
-## 👨‍💻 About
-
-Built by **Aman** — an Electrical & Electronics Engineering student at Ahmedabad University who decided building an AI assistant from scratch was a perfectly normal thing to do during first year. 
-
-No CS degree. No shortcuts. Just curiosity, Python, and way too many late nights. 🌙
-
----
-
-## 📄 License
-
-MIT License — do whatever you want with it, just don't blame me if Rexy gets too smart. 😄
+*This is just the beginning.*
