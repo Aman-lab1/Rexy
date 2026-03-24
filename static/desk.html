@@ -9,6 +9,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
   <title>Rexy</title>
 
+  <!-- ▸ NEW: Outfit font for chat panel heading -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap" rel="stylesheet"/>
+
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
@@ -21,6 +24,12 @@
       --eye-w:   90px;
       --eye-h:   110px;
       --eye-gap: 80px;
+      /* ▸ NEW: panel vars */
+      --glass-bg:     rgba(10, 11, 13, 0.80);
+      --glass-border: rgba(255,255,255,0.07);
+      --glass-blur:   blur(32px) saturate(160%);
+      --panel-width:  40%;
+      --spring:       cubic-bezier(0.32, 0.72, 0, 1);
     }
 
     html, body {
@@ -84,6 +93,14 @@
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
+      /* ▸ NEW: blur transition for when chat panel opens */
+      transition: filter 0.45s ease, opacity 0.45s ease;
+    }
+    /* ▸ NEW: face dims when chat panel is open */
+    #scene.panel-blurred {
+      filter: blur(5px);
+      opacity: 0.45;
+      pointer-events: none;
     }
 
     /* ── Face ── */
@@ -327,6 +344,151 @@
       background: radial-gradient(ellipse at center, transparent 50%, #000 100%);
       pointer-events: none; z-index: 50;
     }
+
+    /* ════════════════════════════════
+       ▸ NEW: CHAT TOGGLE BUTTON
+    ════════════════════════════════ */
+    #chat-toggle {
+      position: fixed;
+      top: 20px; left: 20px;
+      z-index: 100; /* panel (150) slides over this */
+      width: 46px; height: 46px;
+      border-radius: 14px;
+      border: 1px solid var(--glass-border);
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: none; /* hidden until logged in — shown by bootMainScreen */
+      align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+      padding: 0;
+    }
+    #chat-toggle:hover  { background: rgba(255,255,255,0.12); }
+    #chat-toggle:active { transform: scale(0.91); }
+    #chat-toggle.visible { display: flex; }
+
+    /* Blue dot badge */
+    #chat-badge {
+      position: absolute;
+      top: 9px; right: 9px;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #7ec8ff;
+      box-shadow: 0 0 6px rgba(100,180,255,0.9);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      opacity: 0; transform: scale(0);
+    }
+    #chat-badge.show { opacity: 1; transform: scale(1); }
+
+    /* ════════════════════════════════
+       ▸ NEW: CHAT PANEL
+    ════════════════════════════════ */
+    #chat-panel {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--panel-width);
+      height: 100%;
+      z-index: 150;
+      transform: translateX(-100%);
+      transition: transform 0.48s var(--spring);
+      will-change: transform;
+    }
+    #chat-panel.open { transform: translateX(0); }
+
+    #panel-glass {
+      width: 100%; height: 100%;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border-right: 1px solid var(--glass-border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      box-shadow: 4px 0 40px rgba(0,0,0,0.7), inset -1px 0 0 rgba(255,255,255,0.05);
+    }
+
+    #panel-header {
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 52px 18px 14px;
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    /* ▸ Outfit font for heading */
+    #panel-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px; font-weight: 500;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+    }
+
+    #panel-close {
+      width: 28px; height: 28px;
+      border-radius: 8px; border: none;
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.35);
+      font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #panel-close:hover { background: rgba(255,255,255,0.13); color: #fff; }
+
+    #panel-messages {
+      flex: 1; overflow-y: auto;
+      padding: 18px 14px 16px;
+      display: flex; flex-direction: column; gap: 12px;
+      scroll-behavior: smooth;
+    }
+    #panel-messages::-webkit-scrollbar { width: 2px; }
+    #panel-messages::-webkit-scrollbar-track { background: transparent; }
+    #panel-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+    .pmsg-row { display: flex; align-items: flex-end; gap: 8px; animation: pmsg-in 0.28s ease forwards; opacity: 0; transform: translateX(-8px); }
+    .pmsg-row.user { flex-direction: row-reverse; animation-name: pmsg-in-r; }
+    @keyframes pmsg-in   { to { opacity:1; transform:translateX(0); } }
+    @keyframes pmsg-in-r { from { opacity:0; transform:translateX(8px); } to { opacity:1; transform:translateX(0); } }
+
+    .pmsg-avatar {
+      width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 600;
+      font-family: 'Courier New', monospace;
+    }
+    .pmsg-avatar.rexy { background: rgba(80,160,255,0.15); color: #a8d4ff; border: 1px solid rgba(100,180,255,0.18); }
+    .pmsg-avatar.user-av { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.35); }
+
+    .pmsg-col { display: flex; flex-direction: column; max-width: 80%; }
+    .pmsg-row.user .pmsg-col { align-items: flex-end; }
+
+    .pmsg-bubble { padding: 8px 12px; border-radius: 14px; font-size: 13px; line-height: 1.55; word-break: break-word; }
+    .pmsg-bubble.rexy { background: rgba(90,160,255,0.13); border: 1px solid rgba(100,180,255,0.1); color: #eef2ff; border-bottom-left-radius: 4px; }
+    .pmsg-bubble.user { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); border-bottom-right-radius: 4px; }
+
+    .pmsg-time { font-size: 9.5px; color: rgba(255,255,255,0.2); font-family: 'Courier New', monospace; margin-top: 4px; padding: 0 2px; }
+
+    #panel-voice-hint {
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      padding: 11px 0 16px;
+      border-top: 1px solid var(--glass-border);
+      color: rgba(255,255,255,0.18); font-size: 10px; letter-spacing: 0.08em;
+      font-family: 'Courier New', monospace;
+    }
+    .pvdot { width: 4px; height: 4px; border-radius: 50%; background: rgba(100,180,255,0.45); animation: pvp 1.8s ease-in-out infinite; }
+    .pvdot:nth-child(2) { animation-delay: 0.25s; }
+    .pvdot:nth-child(3) { animation-delay: 0.5s; }
+    @keyframes pvp { 0%,100%{opacity:0.3;transform:scaleY(1);} 50%{opacity:1;transform:scaleY(1.8);} }
+
+    /* ▸ Overlay (tap outside to close) */
+    #panel-overlay {
+      position: fixed; inset: 0; z-index: 140;
+      display: none;
+      background: rgba(0,0,0,0.2);
+    }
+    #panel-overlay.visible { display: block; }
   </style>
 </head>
 
@@ -371,30 +533,15 @@
   <!-- Face -->
   <div id="scene">
     <div id="face" class="idle-anim">
-
-      <!-- Eyes wrapper -->
       <div id="eyes-wrapper">
         <div id="eyes">
-          <!-- Left eye shell -->
-          <div class="eye-shell" id="eye-l">
-            <div class="eye-fill"></div>
-            <div class="eye-lid"></div>
-          </div>
-          <!-- Right eye shell -->
-          <div class="eye-shell" id="eye-r">
-            <div class="eye-fill"></div>
-            <div class="eye-lid"></div>
-          </div>
+          <div class="eye-shell" id="eye-l"><div class="eye-fill"></div><div class="eye-lid"></div></div>
+          <div class="eye-shell" id="eye-r"><div class="eye-fill"></div><div class="eye-lid"></div></div>
         </div>
-
-        <!-- ZZZ -->
         <div id="zzz-wrap">
-          <span class="z z1">z</span>
-          <span class="z z2">z</span>
-          <span class="z z3">z</span>
+          <span class="z z1">z</span><span class="z z2">z</span><span class="z z3">z</span>
         </div>
       </div>
-
       <div id="mouth"></div>
     </div>
   </div>
@@ -403,10 +550,38 @@
   <div id="transcript-bubble"></div>
 </div>
 
+<!-- ▸ NEW: Chat toggle button (top-left, shown after login) -->
+<button id="chat-toggle" aria-label="Open chat history" onclick="ChatPanel.toggle()">
+  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="1.5" y="1.5" width="19" height="19" rx="4.5" stroke="rgba(255,255,255,0.75)" stroke-width="1.8" fill="none"/>
+    <rect x="1.5" y="1.5" width="6.5" height="19" rx="4.5" fill="rgba(255,255,255,0.75)"/>
+    <rect x="5.5" y="1.5" width="2.5" height="19" fill="rgba(255,255,255,0.75)"/>
+  </svg>
+  <span id="chat-badge"></span>
+</button>
+
+<!-- ▸ NEW: Overlay + Chat Panel -->
+<div id="panel-overlay" onclick="ChatPanel.close()"></div>
+
+<div id="chat-panel">
+  <div id="panel-glass">
+    <div id="panel-header">
+      <span id="panel-title">Conversation</span>
+      <button id="panel-close" onclick="ChatPanel.close()" aria-label="Close">✕</button>
+    </div>
+    <div id="panel-messages"></div>
+    <div id="panel-voice-hint">
+      <div class="pvdot"></div><div class="pvdot"></div><div class="pvdot"></div>
+      <span>voice only</span>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ═══════════════════════════════════════════════════════
    REXY DESK BUDDY — Full build
    Firebase | WebSocket | Voice | TTS | Passive Mode
+   + Chat Panel (sliding glass, daily clear, swipe-to-close)
 ═══════════════════════════════════════════════════════ */
 
 const FIREBASE_CONFIG = {
@@ -468,7 +643,6 @@ const BlinkEngine = (() => {
     }, 100);
   }
 
-  // Slow doze blink — lids close fully then reopen to doze position
   function dozeBlink() {
     if (EmotionEngine.get() !== 'dozing') return;
     const lL = eyeL.querySelector('.eye-lid');
@@ -635,10 +809,9 @@ const TimeDisplay = (() => {
    6. PASSIVE SYSTEM
 ════════════════════════════ */
 const PassiveSystem = (() => {
-  // Real timings
-  const IDLE_AFTER = 45000;   // 45s → go idle
-  const DOZE_AFTER = 600000;  // 10 min → dozing
-  const WAKE_AFTER = 300000;  // 5 min → auto wake
+  const IDLE_AFTER = 45000;
+  const DOZE_AFTER = 600000;
+  const WAKE_AFTER = 300000;
 
   let stage = 'active';
   let idleTimer = null, dozeTimer = null, wakeTimer = null;
@@ -765,7 +938,7 @@ const TTSEngine = (() => {
       EmotionEngine.set(emotion);
       EmotionEngine.setSpeaking(true);
       setStatus('speaking…');
-      PassiveSystem.onInteract(); // Reset passive timer on speak
+      PassiveSystem.onInteract();
     };
 
     utt.onend = () => {
@@ -820,6 +993,8 @@ const WSEngine = (() => {
 
   function send(text) {
     if (!ws || ws.readyState !== WebSocket.OPEN) { IslandEngine.notify('⚠️', 'Not connected', 'sad'); return; }
+    // ▸ Store user message before sending
+    ChatPanel.addMessage('user', text);
     ws.send(JSON.stringify({ message: text }));
   }
 
@@ -851,6 +1026,10 @@ const WSEngine = (() => {
 
     const displayText = notifText || (reply.length > 32 ? reply.slice(0, 30) + '…' : reply);
     IslandEngine.notify(notifIcon, displayText, faceEmotion);
+
+    // ▸ Store Rexy reply + show badge
+    ChatPanel.addMessage('rexy', reply);
+
     setTimeout(() => TTSEngine.speak(reply, faceEmotion), 600);
   }
 
@@ -934,6 +1113,126 @@ const VoiceEngine = (() => {
 })();
 
 /* ════════════════════════════
+   ▸ NEW: CHAT PANEL
+════════════════════════════ */
+const ChatPanel = (() => {
+  const panel    = document.getElementById('chat-panel');
+  const overlay  = document.getElementById('panel-overlay');
+  const scene    = document.getElementById('scene');
+  const badge    = document.getElementById('chat-badge');
+  const msgsCont = document.getElementById('panel-messages');
+
+  // Daily storage key — messages clear automatically on a new day
+  const TODAY    = new Date().toISOString().slice(0, 10);
+  const STORE_KEY = 'rexy_chat_' + TODAY;
+
+  // Purge old day keys from localStorage
+  Object.keys(localStorage).forEach(k => {
+    if (k.startsWith('rexy_chat_') && k !== STORE_KEY) localStorage.removeItem(k);
+  });
+
+  let isOpen = false;
+
+  // ── Storage helpers ──
+  function loadMsgs() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch { return []; }
+  }
+  function saveMsgs(msgs) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(msgs)); } catch {}
+  }
+
+  // ── Add a message (called by WSEngine) ──
+  function addMessage(role, text) {
+    const msgs = loadMsgs();
+    const now  = new Date();
+    msgs.push({
+      role,
+      text,
+      time: String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0')
+    });
+    saveMsgs(msgs);
+    // Show badge only if panel is closed
+    if (!isOpen) badge.classList.add('show');
+  }
+
+  // ── Render messages ──
+  function render() {
+    const msgs = loadMsgs();
+    msgsCont.innerHTML = '';
+
+    if (!msgs.length) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'text-align:center;color:rgba(255,255,255,0.2);font-size:12px;margin-top:40px;font-family:monospace;letter-spacing:0.1em;';
+      empty.textContent = 'No conversations today yet.';
+      msgsCont.appendChild(empty);
+      return;
+    }
+
+    msgs.forEach((msg, i) => {
+      const isUser = msg.role === 'user';
+      const row = document.createElement('div');
+      row.className = 'pmsg-row' + (isUser ? ' user' : '');
+      row.style.animationDelay = i * 30 + 'ms';
+
+      const av = document.createElement('div');
+      av.className = 'pmsg-avatar ' + (isUser ? 'user-av' : 'rexy');
+      av.textContent = isUser ? 'A' : 'R';
+
+      const col = document.createElement('div');
+      col.className = 'pmsg-col';
+
+      const b = document.createElement('div');
+      b.className = 'pmsg-bubble ' + (isUser ? 'user' : 'rexy');
+      b.textContent = msg.text;
+
+      const t = document.createElement('div');
+      t.className = 'pmsg-time';
+      t.textContent = msg.time;
+
+      col.append(b, t);
+      row.append(av, col);
+      msgsCont.appendChild(row);
+    });
+
+    setTimeout(() => { msgsCont.scrollTop = msgsCont.scrollHeight; }, 60);
+  }
+
+  // ── Open / Close ──
+  function open() {
+    isOpen = true;
+    panel.classList.add('open');
+    overlay.classList.add('visible');
+    scene.classList.add('panel-blurred');
+    badge.classList.remove('show');
+    render();
+  }
+
+  function close() {
+    isOpen = false;
+    panel.classList.remove('open');
+    overlay.classList.remove('visible');
+    scene.classList.remove('panel-blurred');
+  }
+
+  function toggle() { isOpen ? close() : open(); }
+
+  // ── Swipe left to close ──
+  let touchStartX = 0, touchStartY = 0;
+  panel.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  panel.addEventListener('touchend', e => {
+    if (!isOpen) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+    if (dx < -50 && dy < 60) close();
+  }, { passive: true });
+
+  return { open, close, toggle, addMessage };
+})();
+
+/* ════════════════════════════
    10. UI HELPERS
 ════════════════════════════ */
 function setStatus(text) {
@@ -953,6 +1252,8 @@ function hideTranscript() { transcriptEl.classList.remove('show'); }
 function bootMainScreen(token, name) {
   document.getElementById('login-screen').classList.add('hide');
   document.getElementById('main-screen').classList.add('show');
+  // ▸ Show chat toggle button after login
+  document.getElementById('chat-toggle').classList.add('visible');
   EmotionEngine.set('idle');
   BlinkEngine.start();
   IdleEngine.start();
