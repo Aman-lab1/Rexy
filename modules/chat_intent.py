@@ -122,7 +122,7 @@ IDENTITY:
         messages.append({"role": "user", "content": message})
 
         try:
-            reply = groq_client.chat(messages, temperature=0.65)
+            reply = groq_client.chat(messages, temperature=0.65, max_tokens=300)
             if reply is None:
                 raise Exception("Groq returned None")
 

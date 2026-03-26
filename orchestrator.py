@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 from enum import Enum
 from dotenv import load_dotenv
 import groq_client
+import voice_pipeline 
 import supabase_db
 
 import uvicorn
@@ -792,8 +793,12 @@ async def process_message(message: str, state: Dict[str, Any]) -> Dict[str, Any]
         if ReActEngine.needs_react(message, intent_data["intent"]):
             logger.info(f"ReAct | TRIGGERED | intent={intent_data['intent']}")
             result = ReActEngine.run(message, intent_data["intent"], result)
-            
+
+        # ── STEP 3.6: Shape response — smooth robotic output ──
+        result["reply"] = voice_pipeline.shape_response(result["reply"])
+
         logger.info(f"EXECUTE | {intent_data['intent']} → '{result['reply'][:60]}'")
+        
         emit("EXECUTION_RESULT", {
             "intent": intent_data["intent"],
             "reply":  result["reply"][:80],
@@ -981,6 +986,18 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_text(json.dumps({
                     "reply":   f"⏳ Slow down! Max {limiter.limit} messages per minute. "
                                f"Try again in a few seconds.",
+                    "emotion": "neutral",
+                    "state":   "speaking",
+                    "intent":  "CHAT",
+                    "turn_id": session["turn_id"]
+                }))
+                continue
+
+            # ── VOICE PIPELINE: humanize + confidence filter ──
+            proceed, message, fallback = voice_pipeline.process_input(message)
+            if not proceed:
+                await websocket.send_text(json.dumps({
+                    "reply":   fallback,
                     "emotion": "neutral",
                     "state":   "speaking",
                     "intent":  "CHAT",
