@@ -1081,15 +1081,38 @@ const VoiceEngine = (() => {
     recognition.onend = () => { listening = false; micRing.classList.remove('active'); };
   }
 
+  // ── Acknowledgements — spoken while Rexy thinks ──
+  const ACKNOWLEDGEMENTS = [
+      "Alright…", "Got it…", "Sure…", "Let me think…", "One sec…"
+  ];
+
+  function speakAck() {
+      const ack = ACKNOWLEDGEMENTS[Math.floor(Math.random() * ACKNOWLEDGEMENTS.length)];
+      const utt = new SpeechSynthesisUtterance(ack);
+      utt.rate = 0.95; utt.pitch = 1.0; utt.volume = 1;
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = voices.find(v =>
+          v.name.includes('Google UK English Female') ||
+          v.name.includes('Samantha') ||
+          v.name.includes('Karen') ||
+          v.name.includes('Veena') ||
+          (v.lang === 'en-US' && v.name.toLowerCase().includes('female'))
+      ) || voices.find(v => v.lang === 'en-IN');
+      if (preferred) utt.voice = preferred;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utt);
+  }
+
   function onFinal(text) {
-    if (!text) return;
-    stopListening();
-    EmotionEngine.set('thinking');
-    setStatus('thinking…');
-    showTranscript(text);
-    IslandEngine.notify('🔍', text.length > 28 ? text.slice(0, 26) + '…' : text, 'thinking');
-    setTimeout(() => WSEngine.send(text), 300);
-    setTimeout(() => hideTranscript(), 3000);
+      if (!text) return;
+      stopListening();
+      EmotionEngine.set('thinking');
+      setStatus('thinking…');
+      showTranscript(text);
+      IslandEngine.notify('🔍', text.length > 28 ? text.slice(0, 26) + '…' : text, 'thinking');
+      speakAck();                                    // ← speak ack immediately
+      setTimeout(() => WSEngine.send(text), 300);
+      setTimeout(() => hideTranscript(), 3000);
   }
 
   function start() {
