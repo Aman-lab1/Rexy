@@ -14,6 +14,10 @@ from config import SUPABASE_URL, SUPABASE_ANON_KEY
 
 logger = logging.getLogger("rexy.supabase")
 
+def get_client():
+    """Return the raw Supabase client for direct table access."""
+    return _client  # whatever your internal client variable is named
+
 # ─────────────────────────────────────────────
 # CLIENT
 # ─────────────────────────────────────────────

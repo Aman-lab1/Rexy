@@ -17,6 +17,9 @@ from enum import Enum
 from dotenv import load_dotenv
 import groq_client
 import voice_pipeline 
+import memory_logger
+import pattern_detector
+import reflection_engine
 import supabase_db
 
 import uvicorn
@@ -798,7 +801,7 @@ async def process_message(message: str, state: Dict[str, Any]) -> Dict[str, Any]
         result["reply"] = voice_pipeline.shape_response(result["reply"])
 
         logger.info(f"EXECUTE | {intent_data['intent']} → '{result['reply'][:60]}'")
-        
+
         emit("EXECUTION_RESULT", {
             "intent": intent_data["intent"],
             "reply":  result["reply"][:80],
@@ -823,6 +826,22 @@ async def process_message(message: str, state: Dict[str, Any]) -> Dict[str, Any]
 
         state["intent"]["last_intent"] = intent_data["intent"]
 
+        # ── STEP 5: Log interaction for pattern detection ──
+        memory_logger.log_interaction(
+            uid=state["uid"],
+            intent=intent_data["intent"],
+            turn_count=state["turn_id"],
+        )
+
+        # ── STEP 6: Reflection — weave pattern observation if conditions match ──
+        patterns = pattern_detector.get_patterns(state["uid"])
+        result["reply"] = reflection_engine.maybe_reflect(
+            uid=state["uid"],
+            reply=result["reply"],
+            intent=intent_data["intent"],
+            patterns=patterns,
+        )
+        
         return {
             "reply":   result["reply"],
             "emotion": result["emotion"],
