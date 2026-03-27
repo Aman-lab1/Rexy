@@ -156,7 +156,37 @@ def shape_response(text: str) -> str:
     logger.warning("Shaper call failed — using raw LLM output.")
     return text
 
+# ─── Response Chunker ─────────────────────────────────────────────────────────
 
+MAX_CHUNK_WORDS = 50
+
+def chunk_response(text: str) -> list:
+    """
+    Split a reply into speakable chunks.
+    Strategy: sentence-first, then 50-word cap.
+    Returns a list of non-empty strings.
+    """
+    if not text or not text.strip():
+        return [text]
+
+    # Split on sentence-ending punctuation
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+
+    chunks = []
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        words = sentence.split()
+        if len(words) <= MAX_CHUNK_WORDS:
+            chunks.append(sentence)
+        else:
+            # Long sentence — cut at word boundary
+            while words:
+                chunks.append(' '.join(words[:MAX_CHUNK_WORDS]))
+                words = words[MAX_CHUNK_WORDS:]
+
+    return chunks if chunks else [text]
 # ─── Convenience: full input pipeline ────────────────────────────────────────
 
 def process_input(raw_text: str) -> Tuple[bool, str, str]:

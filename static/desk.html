@@ -956,7 +956,47 @@ const TTSEngine = (() => {
     window.speechSynthesis.speak(utt);
   }
 
-  return { speak };
+  function speakChunked(chunks, emotion, liveBubble) {
+  if (!chunks || !chunks.length) return;
+  window.speechSynthesis.cancel();
+  EmotionEngine.set(emotion);
+  EmotionEngine.setSpeaking(true);
+  setStatus('speaking…');
+  PassiveSystem.onInteract();
+
+  let i = 0;
+
+  function next() {
+    if (i >= chunks.length) {
+      EmotionEngine.setSpeaking(false);
+      EmotionEngine.set('idle');
+      setStatus('tap to speak');
+      return;
+    }
+    const chunk = chunks[i++];
+    ChatPanel.appendChunk(liveBubble, chunk);   // build text live
+
+    const utt = new SpeechSynthesisUtterance(cleanForSpeech(chunk));
+    utt.rate = 0.95; utt.pitch = 1.0; utt.volume = 1;
+
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v =>
+      v.name.includes('Google UK English Female') ||
+      v.name.includes('Samantha') ||
+      v.name.includes('Karen') ||
+      v.name.includes('Veena') ||
+      (v.lang === 'en-US' && v.name.toLowerCase().includes('female'))
+    ) || voices.find(v => v.lang === 'en-IN');
+    if (preferred) utt.voice = preferred;
+
+    utt.onend   = () => setTimeout(next, 300);   // 300ms pause between chunks
+    utt.onerror = () => setTimeout(next, 300);   // don't get stuck on error
+    window.speechSynthesis.speak(utt);
+  }
+
+  next();
+}
+  return { speak, speakChunked };
 })();
 
 /* ════════════════════════════
@@ -1027,10 +1067,13 @@ const WSEngine = (() => {
     const displayText = notifText || (reply.length > 32 ? reply.slice(0, 30) + '…' : reply);
     IslandEngine.notify(notifIcon, displayText, faceEmotion);
 
-    // ▸ Store Rexy reply + show badge
+// ▸ Store full reply immediately (badge + history)
     ChatPanel.addMessage('rexy', reply);
 
-    setTimeout(() => TTSEngine.speak(reply, faceEmotion), 600);
+    // ▸ Chunked playback — text builds live in panel
+    const chunks = (data.chunks && data.chunks.length) ? data.chunks : [reply];
+    const liveBubble = ChatPanel.createLiveBubble();
+    setTimeout(() => TTSEngine.speakChunked(chunks, faceEmotion, liveBubble), 600);
   }
 
   return { init, send };
@@ -1252,7 +1295,38 @@ const ChatPanel = (() => {
     if (dx < -50 && dy < 60) close();
   }, { passive: true });
 
-  return { open, close, toggle, addMessage };
+// ── Live bubble for chunked TTS display ──
+  function createLiveBubble() {
+    if (!isOpen) return null;
+    const now = new Date();
+    const timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    const row = document.createElement('div');
+    row.className = 'pmsg-row';
+    const av = document.createElement('div');
+    av.className = 'pmsg-avatar rexy';
+    av.textContent = 'R';
+    const col = document.createElement('div');
+    col.className = 'pmsg-col';
+    const b = document.createElement('div');
+    b.className = 'pmsg-bubble rexy';
+    b.textContent = '';
+    const t = document.createElement('div');
+    t.className = 'pmsg-time';
+    t.textContent = timeStr;
+    col.append(b, t);
+    row.append(av, col);
+    msgsCont.appendChild(row);
+    msgsCont.scrollTop = msgsCont.scrollHeight;
+    return b;
+  }
+
+  function appendChunk(bubbleEl, text) {
+    if (!bubbleEl || !text) return;
+    bubbleEl.textContent += (bubbleEl.textContent ? ' ' : '') + text;
+    msgsCont.scrollTop = msgsCont.scrollHeight;
+  }
+
+  return { open, close, toggle, addMessage, createLiveBubble, appendChunk };
 })();
 
 /* ════════════════════════════
