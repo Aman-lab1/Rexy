@@ -989,8 +989,8 @@ const TTSEngine = (() => {
     ) || voices.find(v => v.lang === 'en-IN');
     if (preferred) utt.voice = preferred;
 
-    utt.onend   = () => setTimeout(next, 300);   // 300ms pause between chunks
-    utt.onerror = () => setTimeout(next, 300);   // don't get stuck on error
+    utt.onend   = () => setTimeout(next, 100);   // 100ms pause between chunks
+    utt.onerror = () => setTimeout(next, 200);   // don't get stuck on error
     window.speechSynthesis.speak(utt);
   }
 
@@ -1094,10 +1094,15 @@ const VoiceEngine = (() => {
     recognition.lang = 'en-US';
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
-    recognition.continuous = false;
+    recognition.continuous = true;          // ← was false
+
+    let silenceTimer = null;
+    let accumulated  = '';
+    const SILENCE_MS = 1500;
 
     recognition.onstart = () => {
-      listening = true;
+      listening   = true;
+      accumulated = '';
       EmotionEngine.set('listening');
       micRing.classList.add('active');
       setStatus('listening…');
@@ -1111,17 +1116,31 @@ const VoiceEngine = (() => {
         const t = e.results[i][0].transcript;
         e.results[i].isFinal ? (final += t) : (interim += t);
       }
-      showTranscript(final || interim);
-      if (final) onFinal(final.trim());
+
+      if (final) accumulated += final;
+      const display = accumulated + interim;
+      if (display) showTranscript(display);
+
+      // Reset silence timer on every new word
+      clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(() => {
+        const toSend = accumulated || interim;
+        if (toSend.trim()) onFinal(toSend.trim());
+      }, SILENCE_MS);
     };
 
     recognition.onerror = (e) => {
+      clearTimeout(silenceTimer);
       console.error('SR error:', e.error);
       stopListening();
       if (e.error === 'no-speech') IslandEngine.notify('👂', 'Nothing heard — try again', 'sad');
     };
 
-    recognition.onend = () => { listening = false; micRing.classList.remove('active'); };
+    recognition.onend = () => {
+      clearTimeout(silenceTimer);
+      listening = false;
+      micRing.classList.remove('active');
+    };
   }
 
   // ── Acknowledgements — spoken while Rexy thinks ──
