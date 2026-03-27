@@ -1034,8 +1034,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 "emotion": result["emotion"],
                 "state":   result["state"],
                 "intent":  result.get("intent", "CHAT"),
-                "turn_id": session["turn_id"]
-            }
+                "turn_id": session["turn_id"],
+                "chunks":  voice_pipeline.chunk_response(result["reply"])   
+}
 
             logger.info(f"REXY: {result['reply'][:60]}")
             await websocket.send_text(json.dumps(response))
