@@ -521,7 +521,8 @@ class ExecutionEngine:
 
         # ── PRIORITY 2: GET_TIME ──
         if intent == "GET_TIME":
-            current_time = datetime.now().strftime("%I:%M %p")
+            from zoneinfo import ZoneInfo
+            current_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%I:%M %p")
             return {
                 "reply": f"🕐 It's {current_time} right now!",
                 "emotion": "neutral",
