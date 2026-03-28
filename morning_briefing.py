@@ -47,7 +47,7 @@ def mark_shown(uid: str) -> None:
 
 def assemble(uid: str, session: Dict) -> Optional[Dict[str, Any]]:
     try:
-        weather    = _get_weather(session)
+        weather    = _get_weather(uid)
         calendar   = _get_calendar()
         patterns   = pattern_detector.get_patterns(uid)
         focus      = _build_focus(patterns, calendar)
@@ -66,14 +66,16 @@ def assemble(uid: str, session: Dict) -> Optional[Dict[str, Any]]:
         return None
 
 
-def _get_weather(session: Dict) -> Optional[Dict]:
+def _get_weather(uid: str) -> Optional[Dict]:
     try:
         from modules.plugins.weather_plugin import WeatherPlugin
-        plugin = WeatherPlugin()
-        city   = (session.get("memory") or {}).get("last_weather_city", "")
-        if city:
-            return plugin._fetch_weather(city)
-        return None
+        user_data = supabase_db.get_user_data(uid) or {}
+        memories  = user_data.get("memories", {})
+        city_entry = memories.get("last_weather_city", {})
+        city = city_entry.get("value", "") if isinstance(city_entry, dict) else str(city_entry)
+        if not city:
+            return None
+        return WeatherPlugin()._fetch_weather(city)
     except Exception as e:
         logger.warning(f"Briefing weather failed: {e}")
         return None
