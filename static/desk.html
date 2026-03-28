@@ -1048,6 +1048,12 @@ const WSEngine = (() => {
       notifIcon = data.icon      || '💬';
       intent    = data.intent    || '';
     }
+    // ▸ Nudge — island + TTS only, no chat panel
+    if (data.type === 'nudge') {
+      IslandEngine.notify('💭', data.reply, 'happy');
+      setTimeout(() => TTSEngine.speak(data.reply, 'happy'), 600);
+      return;
+    }
     if (!reply) return;
 
     let faceEmotion = EMOTION_MAP[emotion] || emotion;
@@ -1094,7 +1100,7 @@ const VoiceEngine = (() => {
     recognition.lang = 'en-US';
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
-    recognition.continuous = true;          // ← was false
+    recognition.continuous = true;          
 
     let silenceTimer = null;
     let accumulated  = '';

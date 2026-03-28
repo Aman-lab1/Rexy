@@ -216,3 +216,36 @@ def get_or_create_user(uid: str, email: str) -> Dict:
         create_user(uid, email)
         return {"uid": uid, "email": email, "memories": {}, "identity": {}}
     return data
+
+# ─────────────────────────────────────────────
+# NUDGE LOG
+# ─────────────────────────────────────────────
+
+def get_nudge_log(uid: str) -> list:
+    """Fetch all nudge_log entries for a user."""
+    if not _check():
+        return []
+    assert _client is not None
+    try:
+        result = _client.table("nudge_log").select("*").eq("uid", uid).execute()
+        return result.data or []
+    except Exception as e:
+        logger.error(f"get_nudge_log failed: {e}")
+        return []
+
+
+def log_nudge(uid: str, nudge_type: str, nudge_text: str) -> bool:
+    """Insert a nudge record into nudge_log."""
+    if not _check():
+        return False
+    assert _client is not None
+    try:
+        _client.table("nudge_log").insert({
+            "uid":        uid,
+            "nudge_type": nudge_type,
+            "nudge_text": nudge_text
+        }).execute()
+        return True
+    except Exception as e:
+        logger.error(f"log_nudge failed: {e}")
+        return False

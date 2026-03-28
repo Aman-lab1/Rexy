@@ -20,6 +20,7 @@ import voice_pipeline
 import memory_logger
 import pattern_detector
 import reflection_engine
+import nudge_engine
 import supabase_db
 
 import uvicorn
@@ -865,6 +866,27 @@ def _safe_fallback(message: str, state: Dict[str, Any]) -> Dict[str, Any]:
         "state": "idle"
     }
 
+async def _nudge_loop(uid: str, websocket: WebSocket, session: dict):
+    """Fire nudge check on connect (after 10s), then every 30 minutes."""
+    await asyncio.sleep(10)
+    while True:
+        try:
+            last_active = session.get("last_active", 0)
+            session_active = (datetime.now().timestamp() - last_active) < 300
+            nudge = nudge_engine.evaluate(uid, session_active=session_active)
+            if nudge:
+                await websocket.send_text(json.dumps({
+                    "type":       "nudge",
+                    "reply":      nudge["nudge_text"],
+                    "nudge_type": nudge["nudge_type"],
+                    "emotion":    "happy",
+                    "intent":     "NUDGE"
+                }))
+        except Exception as e:
+            logger.warning(f"Nudge loop error: {e}")
+            break
+        await asyncio.sleep(1800)
+
 # =============================================================================
 # 🌐 FASTAPI APPLICATION + WEBSOCKET
 # =============================================================================
@@ -958,6 +980,7 @@ async def websocket_endpoint(websocket: WebSocket):
     session["intent"]["last_result"] = None
     session["pending"]               = None
     session["chat_handler"]          = None
+    asyncio.create_task(_nudge_loop(uid, websocket, session))
 
     # One rate limiter per connection
     limiter = RateLimiter()
@@ -1027,6 +1050,7 @@ async def websocket_endpoint(websocket: WebSocket):
             logger.info(f"USER: {message}")
             from observer import timed
             with timed("full_pipeline", uid=uid, intent="unknown"):
+                session["last_active"] = datetime.now().timestamp()
                 result = await process_message(message, session)
 
             response = {
