@@ -91,6 +91,9 @@ def maybe_reflect(
     if not patterns:
         return reply
 
+    if intent == "MEMORY":
+        return reply
+    
     try:
         # ── Check daily flag ──
         if _already_reflected_today(uid):

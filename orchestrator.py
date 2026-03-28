@@ -638,6 +638,16 @@ class ExecutionEngine:
                 "state": "speaking"
             }
 
+        # ── REXY STATUS ──
+        if intent == "REXY_STATUS":
+            import self_awareness
+            reply = self_awareness.get_reply(message)
+            return {
+                "reply": reply,
+                "emotion": "happy",
+                "state": "speaking"
+            }
+        
         # ── FALLBACK (shouldn't reach here normally) ──
         if PLUGIN_MANAGER.has(intent):
             return PLUGIN_MANAGER.execute(intent, message, emotion, state, args)

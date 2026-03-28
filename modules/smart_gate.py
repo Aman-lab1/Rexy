@@ -218,7 +218,15 @@ class SmartGate:
         # Do NOT match general questions (those go to CHAT via Groq)
         (r'^\s*(search|look\s*up|google|find\s+info|find\s+information)\b',
                                                    "WEB_SEARCH",  None),  # extracts query
-
+        # ── ABOUT ME ────────────────────────────────────────────────
+        # Must be BEFORE the generic MEMORY pattern
+        (
+        r'\b(what do you know|what do you remember|tell me|what have you learned)\b.{0,25}\b(about me|about myself)\b'
+        r'|\b(what.?s|whats|what is|when is|when.?s)\s+my\s+(name|birthday|bday|birthdate|birth date|age)\b'
+        r'|\bdo you know my (name|birthday|bday|birthdate)\b',
+            "MEMORY",
+            {"action": "about_me"}
+        ),
         # ── MEMORY ──────────────────────────────────────────────
         # Only explicit memory phrases — "remember that", "remind me"
         # Do NOT match "my name is X" (that's CHAT for ChatHandler to handle)
@@ -325,6 +333,16 @@ class SmartGate:
             r'screen\s+capture|screenshot\s+(called|named|save))\b',
             "COMPUTER",
             None
+        ),
+
+        # ── REXY STATUS ─────────────────────────────────────────────
+        (
+            r'^\s*(who|what)\s+are\s+you\b'
+            r'|\bwhat\s+can\s+you\s+do\b'
+            r'|\bwhat\s+(are\s+you\s+working\s+on|is\s+your\s+status|phase\s+are\s+you\s+on)\b'
+            r'|\byour\s+(status|progress|roadmap)\b',
+            "REXY_STATUS",
+            {}
         ),
     ]
     
@@ -488,6 +506,15 @@ class SmartGate:
         """
         msg_lower = message.lower()
 
+        # ── About me ──
+        if re.search(
+            r'\b(what do you know|what do you remember|tell me|what have you learned)\b.{0,25}\b(about me|about myself)\b'
+            r'|\b(what.?s|whats|what is)\s+my\s+(name|birthday|bday|birth date|age)\b'
+            r'|\bdo you know my (name|birthday|bday|birth date)\b',
+            message, re.IGNORECASE
+        ):
+            return {"action": "about_me"}
+        
         # ── Save ──
         save_match = re.search(
             r'(?:remember\s+that|remind\s+me\s+(?:to|that|about)?)\s+(.+)',

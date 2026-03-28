@@ -19,6 +19,8 @@ from typing import Any, Dict, List, Optional
 
 from modules.plugin_base import RexyPlugin
 import supabase_db
+import pattern_detector
+
 
 logger = logging.getLogger("rexy.memory")
 
@@ -80,7 +82,14 @@ class MemoryPlugin(RexyPlugin):
         memories = self._load(uid)
 
         message_lower = message.lower().strip()
-
+        # ── ABOUT ME (from SmartGate args or message pattern) ──
+        if args.get("action") == "about_me" or re.search(
+            r'\b(what do you know|what do you remember|tell me|what have you learned)\b.{0,25}\b(about me|about myself)\b'
+            r'|\b(what.?s|whats|what is)\s+my\s+(name|birthday|bday|age)\b'
+            r'|\bdo you know my (name|birthday|bday)\b',
+            message_lower
+        ):
+            return self._about_me(uid, memories)
         # ── FORGET ALL ──
         if re.search(r'\b(forget|clear|delete|wipe)\s+(all|everything)\b', message_lower):
             return self._forget_all(uid, memories)
@@ -107,7 +116,13 @@ class MemoryPlugin(RexyPlugin):
         if save_match:
             content = save_match.group(2).strip()
             return self._save(uid, memories, content)
-
+        
+        # ── ABOUT ME ──
+        if re.search(r'\b(what do you know|what do you remember|tell me|what have you learned)\b.{0,25}\b(about me|about myself)\b', message_lower) \
+        or re.search(r'\b(what|whats|what\'s)\s+(is\s+)?my\s+(name|birthday|bday)\b', message_lower) \
+        or re.search(r'\bdo you know my (name|birthday)\b', message_lower):
+            return self._about_me(uid, memories)
+        
         # ── RECALL SPECIFIC ──
         recall_match = re.search(
             r'\b(what|recall|remind me|do you know)\b.{0,30}\b(?:about|regarding|my)\s+(.+?)(?:\?|$|\.)',
@@ -289,7 +304,84 @@ class MemoryPlugin(RexyPlugin):
             "emotion": "neutral",
             "state": "speaking"
         }
+    # ─────────────────────────────────────────────
+    # ABOUT ME — combines identity + patterns
+    # ─────────────────────────────────────────────
 
+    def _about_me(self, uid: str, memories: Dict) -> Dict[str, Any]:
+
+        parts = []
+        
+        # Pull identity column for name
+        try:
+            user_data = supabase_db.get_user_data(uid) or {}
+            identity  = user_data.get("identity") or {}
+        except Exception:
+            identity = {}
+
+        name = identity.get("name") or None
+        print("DEBUG identity:", identity, "| name:", name)
+
+        # Fallback: scan memories for name if identity is empty
+        if not name:
+            for key, data in memories.items():
+                if key == "patterns":
+                    continue
+                if "name" in key.lower():
+                    val = data.get("value", "")
+                    # extract just the name word(s)
+                    m = re.search(r'(?:my name is|name[:\s]+)\s*([A-Za-z]+)', val, re.IGNORECASE)
+                    name = m.group(1).capitalize() if m else val
+                    break
+
+        if name:
+            parts.append(f"your name is {name}")
+
+        # Birthday — extract date from raw sentence
+        bday_data = memories.get("birthday", {})
+        if bday_data:
+            bday_val = bday_data.get("value", "")
+            date_match = re.search(
+                r'(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+\d{4})?)',
+                bday_val, re.IGNORECASE
+            )
+            if date_match:
+                parts.append(f"your birthday is on {date_match.group(1)}")
+
+        # Patterns
+        try:
+            patterns = memories.get("patterns") or pattern_detector.get_patterns(uid) or {}
+            active_time = patterns.get("active_time", "unknown")
+            top_topics  = patterns.get("top_topics", [])
+            if active_time and active_time != "unknown":
+                parts.append(f"you're usually active during the {active_time}")
+            if top_topics:
+                parts.append(f"you mostly talk to me about {', '.join(top_topics)}")
+        except Exception as e:
+            logger.warning(f"_about_me: pattern fetch failed — {e}")
+
+        # Other saved memories (skip system keys)
+        SYSTEM_KEYS = {"patterns", "reflection_used_today"}
+        other_count = sum(1 for k in memories if k not in SYSTEM_KEYS
+                        and "name" not in k.lower()
+                        and k != "birthday")
+
+        if not parts:
+            return {
+                "reply": "Honestly, I don't know much about you yet. Tell me something — like your name, or anything you'd like me to remember.",
+                "emotion": "neutral",
+                "state": "speaking"
+            }
+
+        reply = "Here's what I know — " + ", ".join(parts) + "."
+        if other_count > 0:
+            reply += f" I've also got {other_count} other thing{'s' if other_count > 1 else ''} saved for you."
+        
+        return {
+            "reply": reply,
+            "emotion": "happy",
+            "state": "speaking"
+        }
     # ─────────────────────────────────────────────
     # KEY GENERATION
     # ─────────────────────────────────────────────
