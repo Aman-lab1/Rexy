@@ -21,6 +21,7 @@ import memory_logger
 import pattern_detector
 import reflection_engine
 import nudge_engine
+import morning_briefing
 import supabase_db
 
 import uvicorn
@@ -887,6 +888,13 @@ async def _nudge_loop(uid: str, websocket: WebSocket, session: dict):
             break
         await asyncio.sleep(1800)
 
+async def _send_briefing(websocket: WebSocket, data: dict):
+    await asyncio.sleep(2)
+    try:
+        await websocket.send_text(json.dumps(data))
+    except Exception as e:
+        logger.warning(f"Briefing send failed: {e}")
+
 # =============================================================================
 # 🌐 FASTAPI APPLICATION + WEBSOCKET
 # =============================================================================
@@ -981,6 +989,11 @@ async def websocket_endpoint(websocket: WebSocket):
     session["pending"]               = None
     session["chat_handler"]          = None
     asyncio.create_task(_nudge_loop(uid, websocket, session))
+    if morning_briefing.should_show(uid):
+        briefing_data = morning_briefing.assemble(uid, session)
+        if briefing_data:
+            morning_briefing.mark_shown(uid)
+            asyncio.create_task(_send_briefing(websocket, briefing_data))
 
     # One rate limiter per connection
     limiter = RateLimiter()

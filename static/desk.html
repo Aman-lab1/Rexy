@@ -40,7 +40,64 @@
       font-family: -apple-system, 'Helvetica Neue', sans-serif;
       color: #fff;
     }
-
+    /* ════════════ MORNING BRIEFING ════════════ */
+    #briefing-sheet {
+      position: fixed; bottom: 0; left: 0; width: 100%; z-index: 210;
+      transform: translateY(100%);
+      transition: transform 0.48s cubic-bezier(0.32, 0.72, 0, 1);
+      will-change: transform;
+    }
+    .mb-inner {
+      background: rgba(10,11,13,0.93);
+      border-top: 0.5px solid rgba(255,255,255,0.09);
+      border-radius: 26px 26px 0 0;
+      padding: 10px 14px 28px;
+      backdrop-filter: blur(32px);
+      -webkit-backdrop-filter: blur(32px);
+    }
+    .mb-handle-wrap { display:flex; justify-content:center; padding: 4px 0 10px; touch-action: none; cursor: grab; }
+    .mb-handle { width:36px; height:4px; background:rgba(255,255,255,0.18); border-radius:4px; }
+    .mb-greeting { font-size:22px; font-weight:500; color:#fff; font-family:-apple-system,sans-serif; letter-spacing:-0.02em; margin-bottom:14px; padding: 0 2px; }
+    .mb-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .mb-card {
+      background: rgba(255,255,255,0.055);
+      border: 0.5px solid rgba(255,255,255,0.09);
+      border-radius: 18px; padding: 14px;
+      opacity: 0; transform: translateY(16px);
+      transition: opacity 0.32s ease, transform 0.32s ease;
+    }
+    .mb-s2 { grid-column: span 2; }
+    .mb-lbl { font-size:9.5px; letter-spacing:.11em; text-transform:uppercase; color:rgba(255,255,255,.26); font-family:'Courier New',monospace; margin-bottom:7px; }
+    .mb-time-big { font-size:40px; font-weight:300; color:#fff; font-family:-apple-system,sans-serif; letter-spacing:-.04em; line-height:1; }
+    .mb-date { font-size:9.5px; color:rgba(255,255,255,.22); font-family:'Courier New',monospace; margin-top:5px; text-transform:uppercase; letter-spacing:.08em; }
+    .mb-temp { font-size:34px; font-weight:300; color:#fff; font-family:-apple-system,sans-serif; letter-spacing:-.03em; line-height:1; }
+    .mb-sub { font-size:11px; color:rgba(255,255,255,.32); font-family:-apple-system,sans-serif; margin-top:3px; }
+    .mb-city { font-size:9.5px; color:rgba(255,255,255,.18); font-family:'Courier New',monospace; margin-top:2px; }
+    .mb-focus { font-size:17px; font-weight:500; color:#fff; font-family:-apple-system,sans-serif; line-height:1.35; letter-spacing:-.02em; }
+    .mb-badges { display:flex; gap:5px; flex-wrap:wrap; margin-top:8px; }
+    .mb-badge { font-size:10px; font-family:-apple-system,sans-serif; padding:2px 8px; border-radius:20px; display:inline-block; }
+    .mb-bl { background:rgba(100,180,255,.11); color:rgba(140,200,255,.9); border:.5px solid rgba(100,180,255,.2); }
+    .mb-ba { background:rgba(255,170,60,.11);  color:rgba(255,190,90,.9);  border:.5px solid rgba(255,170,60,.2); }
+    .mb-bg { background:rgba(80,210,140,.10);  color:rgba(100,225,160,.9); border:.5px solid rgba(80,210,140,.2); }
+    .mb-task-list { max-height:110px; overflow-y:auto; scrollbar-width:none; }
+    .mb-task-list::-webkit-scrollbar { display:none; }
+    .mb-tr { display:flex; align-items:center; gap:7px; padding:6px 0; border-bottom:.5px solid rgba(255,255,255,.05); }
+    .mb-tr:last-child { border-bottom:none; }
+    .mb-td { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+    .mb-tt { font-size:11.5px; color:rgba(255,255,255,.72); font-family:-apple-system,sans-serif; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .mb-tm { font-size:9.5px; color:rgba(255,255,255,.22); font-family:'Courier New',monospace; }
+    .mb-tbadge { font-size:9px; padding:2px 6px; border-radius:7px; font-family:-apple-system,sans-serif; flex-shrink:0; }
+    .mb-over { background:rgba(255,100,100,.12); color:rgba(255,140,140,.9); border:.5px solid rgba(255,100,100,.2); }
+    .mb-reflection { font-size:13px; color:rgba(255,255,255,.5); font-family:-apple-system,sans-serif; line-height:1.6; font-style:italic; }
+    .mb-ref-sub { font-size:9.5px; color:rgba(255,255,255,.18); font-family:'Courier New',monospace; margin-top:6px; }
+    .mb-footer { text-align:center; margin-top:12px; font-size:9.5px; color:rgba(255,255,255,.12); font-family:'Courier New',monospace; letter-spacing:.07em; }
+    #briefing-pull-tab {
+      position:fixed; bottom:0; left:50%; transform:translateX(-50%) translateY(100%);
+      z-index:209; display:flex; flex-direction:column; align-items:center;
+      padding:8px 28px 14px; cursor:pointer;
+      transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+      -webkit-tap-highlight-color: transparent;
+    }
     /* ════════════════════════════════
        LOGIN SCREEN
     ════════════════════════════════ */
@@ -1054,7 +1111,14 @@ const WSEngine = (() => {
       setTimeout(() => TTSEngine.speak(data.reply, 'happy'), 600);
       return;
     }
-    if (!reply) return;
+
+    // ▸ Morning briefing          ← move this ABOVE if (!reply) return
+    if (data.type === 'briefing') {
+      BriefingSheet.receive(data);
+      return;
+    }
+
+    if (!reply) return;            // ← this stays here, after both type checks
 
     let faceEmotion = EMOTION_MAP[emotion] || emotion;
     if (faceEmotion === 'idle' || faceEmotion === 'neutral') {
@@ -1422,7 +1486,182 @@ fbAuth.onAuthStateChanged(async (user) => {
     bootMainScreen(token, name);
   }
 });
+/* ════════════════════════════
+   ▸ MORNING BRIEFING SHEET
+════════════════════════════ */
+const BriefingSheet = (() => {
+  let isOpen = false;
+  let briefData = null;
+  let dragStart = 0;
+  let dragging  = false;
+  let sheet = null;
+  let pullTab = null;
 
+  function _buildDOM() {
+    sheet = document.createElement('div');
+    sheet.id = 'briefing-sheet';
+
+    pullTab = document.createElement('div');
+    pullTab.id = 'briefing-pull-tab';
+    pullTab.innerHTML = `
+      <div style="width:36px;height:4px;background:rgba(255,255,255,0.2);border-radius:4px;margin-bottom:3px;"></div>
+      <div style="font-size:9.5px;color:rgba(255,255,255,0.22);font-family:'Courier New',monospace;letter-spacing:0.08em;text-transform:uppercase;">morning</div>
+    `;
+
+    document.body.appendChild(sheet);
+    document.body.appendChild(pullTab);
+
+    _setupDrag();
+    pullTab.addEventListener('click', () => _show(false));
+  }
+
+  function _populate(d) {
+    const now = new Date();
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const h = String(now.getHours()).padStart(2,'0');
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const dateStr = days[now.getDay()] + ' · ' + months[now.getMonth()] + ' ' + now.getDate();
+
+    const w = d.weather;
+    const weatherHTML = w ? `
+      <div class="mb-lbl">weather</div>
+      <div class="mb-temp">${w.temp_c}°</div>
+      <div class="mb-sub">${w.desc}</div>
+      <div class="mb-city">${w.city.split(',')[0]}</div>
+    ` : `
+      <div class="mb-lbl">weather</div>
+      <div class="mb-temp">--°</div>
+      <div class="mb-sub">unavailable</div>
+    `;
+
+    const cal = d.calendar || {};
+    const todayEvs   = cal.today   || [];
+    const overdueEvs = cal.overdue || [];
+    const ydayCount  = cal.yesterday_count || 0;
+
+    const scheduleRows = [
+      ...overdueEvs.map(e => `
+        <div class="mb-tr">
+          <div class="mb-td" style="background:rgba(255,100,100,.85);"></div>
+          <div class="mb-tt">${e.title}</div>
+          <span class="mb-tbadge mb-over">overdue</span>
+        </div>`),
+      ...todayEvs.map(e => `
+        <div class="mb-tr">
+          <div class="mb-td" style="background:rgba(100,180,255,.7);"></div>
+          <div class="mb-tt">${e.title}</div>
+          <div class="mb-tm">${e.time}</div>
+        </div>`)
+    ].join('');
+
+    const noSched = !scheduleRows ? `<div style="font-size:11px;color:rgba(255,255,255,.22);font-family:-apple-system,sans-serif;padding:6px 0;">Nothing scheduled today.</div>` : '';
+
+    const badges = [
+      todayEvs.length   ? `<span class="mb-badge mb-bl">${todayEvs.length} task${todayEvs.length>1?'s':''} today</span>` : '',
+      overdueEvs.length ? `<span class="mb-badge mb-ba">${overdueEvs.length} overdue</span>` : '',
+      ydayCount         ? `<span class="mb-badge mb-bg">${ydayCount} done yesterday</span>` : '',
+    ].filter(Boolean).join('');
+
+    const reflectionHTML = d.reflection ? `
+      <div class="mb-card mb-s2" id="mb-c5">
+        <div class="mb-lbl">reflection</div>
+        <div class="mb-reflection">"${d.reflection}"</div>
+        <div class="mb-ref-sub">from your recent sessions</div>
+      </div>` : '';
+
+    sheet.innerHTML = `
+      <div class="mb-inner">
+        <div class="mb-handle-wrap" id="mb-hw"><div class="mb-handle"></div></div>
+        <div class="mb-greeting">Good morning.</div>
+        <div class="mb-grid">
+          <div class="mb-card" id="mb-c1">
+            <div class="mb-lbl">time</div>
+            <div class="mb-time-big" id="mb-clock">${h}:${m}</div>
+            <div class="mb-date" id="mb-datestr">${dateStr}</div>
+          </div>
+          <div class="mb-card" id="mb-c2">${weatherHTML}</div>
+          <div class="mb-card mb-s2" id="mb-c3">
+            <div class="mb-lbl">today's focus</div>
+            <div class="mb-focus">${d.focus || 'Starting early might help today.'}</div>
+            <div class="mb-badges">${badges}</div>
+          </div>
+          <div class="mb-card mb-s2" id="mb-c4">
+            <div class="mb-lbl">schedule</div>
+            <div class="mb-task-list">${scheduleRows}${noSched}</div>
+          </div>
+          ${reflectionHTML}
+        </div>
+        <div class="mb-footer">drag down to dismiss · available until ${d.cutoff_hour}:00</div>
+      </div>`;
+
+    clearInterval(window._mbClock);
+    window._mbClock = setInterval(() => {
+      const n = new Date();
+      const el = document.getElementById('mb-clock');
+      if (el) el.textContent = String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+    }, 10000);
+  }
+
+  function _show(isAuto) {
+    if (!sheet) return;
+    isOpen = true;
+    sheet.style.transform = 'translateY(0)';
+    pullTab.style.transform = 'translateX(-50%) translateY(100%)';
+
+    const cards = sheet.querySelectorAll('.mb-card');
+    cards.forEach((c, i) => {
+      setTimeout(() => { c.style.opacity = '1'; c.style.transform = 'translateY(0)'; }, 80 + i * 80);
+    });
+
+    if (isAuto) setTimeout(() => TTSEngine.speak('Good morning.', 'happy'), 700);
+    PassiveSystem.onInteract();
+  }
+
+  function _hide() {
+    isOpen = false;
+    sheet.style.transition = 'transform 0.35s cubic-bezier(0.32,0.72,0,1)';
+    sheet.style.transform = 'translateY(100%)';
+    const now = new Date();
+    const cutoff = briefData ? briefData.cutoff_hour : 13;
+    if (now.getHours() < cutoff) {
+      pullTab.style.transform = 'translateX(-50%) translateY(0)';
+    }
+  }
+
+  function _setupDrag() {
+    function onStart(y) { dragStart = y; dragging = true; if (sheet) sheet.style.transition = 'none'; }
+    function onMove(y)  { if (!dragging || !isOpen || !sheet) return; const dy = Math.max(0, y - dragStart); sheet.style.transform = `translateY(${dy}px)`; }
+    function onEnd(y)   {
+      if (!dragging) return; dragging = false;
+      if (!sheet) return;
+      const dy = y - dragStart;
+      if (dy > 80) { _hide(); } else { sheet.style.transition = 'transform 0.3s cubic-bezier(0.32,0.72,0,1)'; sheet.style.transform = 'translateY(0)'; }
+    }
+
+    document.addEventListener('mousedown',  e => { if (isOpen) onStart(e.clientY); });
+    document.addEventListener('mousemove',  e => onMove(e.clientY));
+    document.addEventListener('mouseup',    e => onEnd(e.clientY));
+    document.addEventListener('touchstart', e => { if (isOpen) onStart(e.touches[0].clientY); }, { passive: true });
+    document.addEventListener('touchmove',  e => onMove(e.touches[0].clientY), { passive: true });
+    document.addEventListener('touchend',   e => onEnd(e.changedTouches[0].clientY), { passive: true });
+
+    // Pull tab upward drag
+    let tabStart = 0, tabDrag = false;
+    pullTab.addEventListener('touchstart', e => { tabStart = e.touches[0].clientY; tabDrag = true; }, { passive: true });
+    document.addEventListener('touchmove', e => { if (!tabDrag) return; if (tabStart - e.touches[0].clientY > 40) { tabDrag = false; _show(false); } }, { passive: true });
+    document.addEventListener('touchend',  () => { tabDrag = false; }, { passive: true });
+  }
+
+  function receive(d) {
+    briefData = d;
+    if (!sheet) _buildDOM();
+    _populate(d);
+    setTimeout(() => _show(true), 300);
+  }
+
+  return { receive };
+})();
 /* ════════════════════════════
    12. TAP TO SPEAK
 ════════════════════════════ */
