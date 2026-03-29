@@ -74,7 +74,7 @@ def _get_weather(uid: str) -> Optional[Dict]:
         city_entry = memories.get("last_weather_city", {})
         city = city_entry.get("value", "") if isinstance(city_entry, dict) else str(city_entry)
         if not city:
-            return None
+            city = "Ahmedabad"  # ← default fallback
         return WeatherPlugin()._fetch_weather(city)
     except Exception as e:
         logger.warning(f"Briefing weather failed: {e}")
