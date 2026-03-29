@@ -956,6 +956,22 @@ async def get_index():
             return HTMLResponse(content=f.read())
     except FileNotFoundError:
         return HTMLResponse(content="<h1>Rexy v4.0</h1><p>WebSocket: ws://localhost:8000/ws</p>")
+    
+@app.post("/test/gesture")
+async def test_gesture(payload: dict):
+    """
+    Simulate a gesture input for testing.
+    Usage: POST /test/gesture {"gesture": "wave", "uid": "test123"}
+    """
+    from input_router import GestureAdapter
+    result = GestureAdapter.normalize(
+        gesture    = payload.get("gesture", ""),
+        uid        = payload.get("uid", "test"),
+        confidence = float(payload.get("confidence", 1.0))
+    )
+    if result:
+        return {"status": "ok", "normalized": result}
+    return {"status": "error", "message": "Unknown gesture"}
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -1032,10 +1048,28 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             payload = json.loads(data)
-            message = payload.get("message", "").strip()
-
-            if not message:
+            # ── STATE UPDATE FROM FRONTEND ──
+            if payload.get("type") == "state_update":
+                new_mode = payload.get("mode")
+                if new_mode in ("active", "idle", "dozing"):
+                    session["device"]["mode"]         = new_mode
+                    session["device"]["user_present"] = new_mode == "active"
+                    logger.info(f"Device state → mode={new_mode} | uid={uid[:8]}")
                 continue
+
+            # ── NORMALIZE INPUT ──
+            from input_router import normalize_input
+            normalized = normalize_input(payload, uid)
+            if not normalized:
+                continue
+
+            # For now, only process chat inputs through the main pipeline
+            # Intent inputs (gestures) will be routed in Phase 6
+            if normalized["type"] == "intent":
+                logger.info(f"Gesture intent received: {normalized['intent']} — queued for Phase 6")
+                continue
+
+            message = normalized["message"]
 
             # ── INPUT SIZE LIMITS ──────────────────────────────────
             # Hard cap: 1500 chars for normal messages.
