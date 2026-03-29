@@ -503,163 +503,170 @@ class ExecutionEngine:
         Execute the appropriate handler for the given intent.
         Returns: {"reply": str, "emotion": str, "state": str}
         """
+        try:
+            # ── PRIORITY 1: RESET ──
+            # Clears session state. Always works, no fuss.
+            if intent == "RESET":
+                state["intent"]["mode"]        = "chat"
+                state["intent"]["last_result"] = None
+                state["intent"]["last_intent"] = None
+                state["memory"]["context_lock"] = None
+                state["pending"]               = None
+                state["chat_handler"]          = None
+                return {
+                    "reply": "🔄 Done! Fresh start — what's on your mind? 😊",
+                    "emotion": "happy",
+                    "state": "speaking"
+                }
 
-        # ── PRIORITY 1: RESET ──
-        # Clears session state. Always works, no fuss.
-        if intent == "RESET":
-            state["intent"]["mode"]        = "chat"
-            state["intent"]["last_result"] = None
-            state["intent"]["last_intent"] = None
-            state["memory"]["context_lock"] = None
-            state["pending"]               = None
-            state["chat_handler"]          = None
-            return {
-                "reply": "🔄 Done! Fresh start — what's on your mind? 😊",
-                "emotion": "happy",
-                "state": "speaking"
-            }
+            # ── PRIORITY 2: GET_TIME ──
+            if intent == "GET_TIME":
+                from zoneinfo import ZoneInfo
+                current_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%I:%M %p")
+                return {
+                    "reply": f"🕐 It's {current_time} right now!",
+                    "emotion": "neutral",
+                    "state": "speaking"
+                }
 
-        # ── PRIORITY 2: GET_TIME ──
-        if intent == "GET_TIME":
-            from zoneinfo import ZoneInfo
-            current_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%I:%M %p")
+            # ── PRIORITY 3: LIST_FILES ──
+            if intent == "LIST_FILES":
+                try:
+                    files = os.listdir('rexy_inbox')
+                    visible = files[:10]
+                    file_list = ', '.join(visible)
+                    overflow  = f" (+{len(files) - 10} more)" if len(files) > 10 else ""
+                    return {
+                        "reply": f"📁 Files here: {file_list}{overflow}",
+                        "emotion": "neutral",
+                        "state": "speaking"
+                    }
+                except Exception as e:
+                    return {
+                        "reply": f"❌ Couldn't read files: {str(e)[:60]}",
+                        "emotion": "neutral",
+                        "state": "speaking"
+                    }
+
+            # ── PRIORITY 4: CALCULATOR ──
+            if intent == "CALCULATOR":
+                # Set mode so follow-up expressions chain correctly
+                state["intent"]["mode"] = "calculator"
+
+                # Import here to avoid circular imports at module level
+                calc = CalculatorHandler()
+                result = calc.process(message, state)
+
+                # Sync state changes from calculator back to global state
+                state["intent"]["mode"]        = result.get("mode", "calculator")
+                state["intent"]["last_result"] = result.get("last_result")
+
+                return {
+                    "reply": result["reply"],
+                    "emotion": "thinking",
+                    "state": result.get("state", "thinking")
+                }
+
+            # ── PRIORITY 5: ADVISOR ──
+            if intent == "ADVISOR":
+                state["intent"]["mode"] = "chat"
+                return {
+                    "reply": (
+                        "😴 Boredom? I've got options:\n"
+                        "• 🧮 Quick math challenge\n"
+                        "• 🎵 Tell me to play some music\n"
+                        "• 💬 Tell me something — I'll surprise you\n"
+                        "• 🤔 Ask me anything\n\n"
+                        "What sounds good?"
+                    ),
+                    "emotion": "neutral",
+                    "state": "speaking"
+                }
+
+            # ── PRIORITY 6: MUSIC ──
+            if intent == "MUSIC":
+                state["intent"]["mode"] = "chat"
+                return {
+                    "reply": "🎵 Music mode! What's the vibe?\n• Chill\n• Focus\n• Hype\nJust say the word.",
+                    "emotion": "happy",
+                    "state": "speaking"
+                }
+
+            # ── PRIORITY 7: CHAT / GREET / EMOTION_SUPPORT ──
+            if intent in ("CHAT", "GREET", "EMOTION_SUPPORT"):
+                state["intent"]["mode"]         = "chat"
+                state["intent"]["last_result"]  = None
+                state["memory"]["context_lock"] = "chat"
+
+                # Lazy-load the ChatHandler (only created once per session)
+                if state["chat_handler"] is None:
+                    state["chat_handler"] = ChatHandler()
+
+                # Name detection — runs BEFORE LLM to avoid wasting a call
+                name_match = re.search(
+                    r'\b(my name is|call me)\s+([A-Za-z][A-Za-z\s]{0,30})(?=\s|$|[.!?])',
+                    message,
+                    re.IGNORECASE
+                )
+                if name_match:
+                    detected_name = name_match.group(2).strip().title()
+                    state["pending"] = {
+                        "status":      "awaiting_name_confirm",
+                        "name":        detected_name,
+                        "retry_count": 0,
+                        "max_retries": 3
+                    }
+                    return {
+                        "reply": f"Should I remember your name as '{detected_name}'? (yes / no)",
+                        "emotion": "neutral",
+                        "state": "speaking"
+                    }
+
+                # Generate response via ChatHandler
+                reply = state["chat_handler"].generate_response(message, emotion, intent)
+
+                # Sparingly use name on greetings and genuine encouragement
+                name = get_name(state)
+                message_lower = message.lower()
+                if name:
+                    is_greeting = any(w in message_lower for w in ["hello", "hi", "hey", "good morning", "good evening"])
+                    if is_greeting:
+                        reply = f"Hey {name}! {reply}"
+
+                return {
+                    "reply": reply,
+                    "emotion": emotion,
+                    "state": "speaking"
+                }
+
+            # ── REXY STATUS ──
+            if intent == "REXY_STATUS":
+                import self_awareness
+                reply = self_awareness.get_reply(message)
+                return {
+                    "reply": reply,
+                    "emotion": "happy",
+                    "state": "speaking"
+                }
+            
+            # ── FALLBACK (shouldn't reach here normally) ──
+            if PLUGIN_MANAGER.has(intent):
+                return PLUGIN_MANAGER.execute(intent, message, emotion, state, args)
+
+            logger.warning(f"ExecutionEngine received unknown intent: {intent}")
             return {
-                "reply": f"🕐 It's {current_time} right now!",
+                "reply": "🤔 I'm not sure what you mean. Try: calc 10+5, time, weather in Ahmedabad, or just chat!",
                 "emotion": "neutral",
-                "state": "speaking"
-            }
-
-        # ── PRIORITY 3: LIST_FILES ──
-        if intent == "LIST_FILES":
-            try:
-                files = os.listdir('rexy_inbox')
-                visible = files[:10]
-                file_list = ', '.join(visible)
-                overflow  = f" (+{len(files) - 10} more)" if len(files) > 10 else ""
-                return {
-                    "reply": f"📁 Files here: {file_list}{overflow}",
-                    "emotion": "neutral",
-                    "state": "speaking"
-                }
-            except Exception as e:
-                return {
-                    "reply": f"❌ Couldn't read files: {str(e)[:60]}",
-                    "emotion": "neutral",
-                    "state": "speaking"
-                }
-
-        # ── PRIORITY 4: CALCULATOR ──
-        if intent == "CALCULATOR":
-            # Set mode so follow-up expressions chain correctly
-            state["intent"]["mode"] = "calculator"
-
-            # Import here to avoid circular imports at module level
-            calc = CalculatorHandler()
-            result = calc.process(message, state)
-
-            # Sync state changes from calculator back to global state
-            state["intent"]["mode"]        = result.get("mode", "calculator")
-            state["intent"]["last_result"] = result.get("last_result")
-
-            return {
-                "reply": result["reply"],
-                "emotion": "thinking",
-                "state": result.get("state", "thinking")
-            }
-
-        # ── PRIORITY 5: ADVISOR ──
-        if intent == "ADVISOR":
-            state["intent"]["mode"] = "chat"
-            return {
-                "reply": (
-                    "😴 Boredom? I've got options:\n"
-                    "• 🧮 Quick math challenge\n"
-                    "• 🎵 Tell me to play some music\n"
-                    "• 💬 Tell me something — I'll surprise you\n"
-                    "• 🤔 Ask me anything\n\n"
-                    "What sounds good?"
-                ),
-                "emotion": "neutral",
-                "state": "speaking"
-            }
-
-        # ── PRIORITY 6: MUSIC ──
-        if intent == "MUSIC":
-            state["intent"]["mode"] = "chat"
-            return {
-                "reply": "🎵 Music mode! What's the vibe?\n• Chill\n• Focus\n• Hype\nJust say the word.",
-                "emotion": "happy",
-                "state": "speaking"
-            }
-
-        # ── PRIORITY 7: CHAT / GREET / EMOTION_SUPPORT ──
-        if intent in ("CHAT", "GREET", "EMOTION_SUPPORT"):
-            state["intent"]["mode"]         = "chat"
-            state["intent"]["last_result"]  = None
-            state["memory"]["context_lock"] = "chat"
-
-            # Lazy-load the ChatHandler (only created once per session)
-            if state["chat_handler"] is None:
-                state["chat_handler"] = ChatHandler()
-
-            # Name detection — runs BEFORE LLM to avoid wasting a call
-            name_match = re.search(
-                r'\b(my name is|call me)\s+([A-Za-z][A-Za-z\s]{0,30})(?=\s|$|[.!?])',
-                message,
-                re.IGNORECASE
-            )
-            if name_match:
-                detected_name = name_match.group(2).strip().title()
-                state["pending"] = {
-                    "status":      "awaiting_name_confirm",
-                    "name":        detected_name,
-                    "retry_count": 0,
-                    "max_retries": 3
-                }
-                return {
-                    "reply": f"Should I remember your name as '{detected_name}'? (yes / no)",
-                    "emotion": "neutral",
-                    "state": "speaking"
-                }
-
-            # Generate response via ChatHandler
-            reply = state["chat_handler"].generate_response(message, emotion, intent)
-
-            # Sparingly use name on greetings and genuine encouragement
-            name = get_name(state)
-            message_lower = message.lower()
-            if name:
-                is_greeting = any(w in message_lower for w in ["hello", "hi", "hey", "good morning", "good evening"])
-                if is_greeting:
-                    reply = f"Hey {name}! {reply}"
-
-            return {
-                "reply": reply,
-                "emotion": emotion,
-                "state": "speaking"
-            }
-
-        # ── REXY STATUS ──
-        if intent == "REXY_STATUS":
-            import self_awareness
-            reply = self_awareness.get_reply(message)
-            return {
-                "reply": reply,
-                "emotion": "happy",
                 "state": "speaking"
             }
         
-        # ── FALLBACK (shouldn't reach here normally) ──
-        if PLUGIN_MANAGER.has(intent):
-            return PLUGIN_MANAGER.execute(intent, message, emotion, state, args)
-
-        logger.warning(f"ExecutionEngine received unknown intent: {intent}")
-        return {
-            "reply": "🤔 I'm not sure what you mean. Try: calc 10+5, time, weather in Ahmedabad, or just chat!",
-            "emotion": "neutral",
-            "state": "speaking"
-        }
-
+        except Exception as e:
+            logger.error(f"ExecutionEngine crash | intent={intent} | message='{message[:50]}' | error={e}")
+            return {
+                "reply": "Something went wrong on my end. Try again?",
+                "emotion": "neutral",
+                "state": "speaking"
+            }
 # =============================================================================
 # 🎯 PENDING STATE MACHINE
 # Handles flows that span multiple turns (name confirm, etc.)

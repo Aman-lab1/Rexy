@@ -119,12 +119,16 @@ class PluginManager:
         try:
             return plugin.execute(message, emotion, state, args)
         except Exception as e:
-            logger.error(f"Plugin '{intent}' crashed: {e}")
-            return {
-                "reply": "❌ That feature hit a snag. Try again?",
-                "emotion": "neutral",
-                "state": "speaking"
-            }
+                logger.error(
+                    f"Plugin '{intent}' crashed | "
+                    f"message='{message[:50]}' | "
+                    f"error={type(e).__name__}: {e}"
+                )
+                return {
+                    "reply": "That feature hit a snag. Try again?",
+                    "emotion": "neutral",
+                    "state": "speaking"
+                }
 
     def get_all_intents(self) -> list:
         """Return list of all registered intent names. Used to update VALID_INTENTS."""
