@@ -873,7 +873,12 @@ const PassiveSystem = (() => {
   let stage = 'active';
   let idleTimer = null, dozeTimer = null, wakeTimer = null;
 
-  function setStage(s) { stage = s; }
+  function setStage(s) {
+      stage = s;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "state_update", mode: s }));
+      }
+  }
 
   function goIdle() {
     if (stage !== 'active') return;

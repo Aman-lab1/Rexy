@@ -132,6 +132,12 @@ def create_session(uid: str) -> Dict[str, Any]:
             "challenge_preference": None
         },
 
+        "device": {
+            "mode":         "active",   # active | idle | dozing
+            "type":         "desktop",  # desktop | mirror
+            "user_present": True,
+        },
+
         "pending":      None,
         "chat_handler": None
     }
@@ -622,12 +628,17 @@ class ExecutionEngine:
                         "state": "speaking"
                     }
 
-                # Generate response via ChatHandler
-                reply = state["chat_handler"].generate_response(message, emotion, intent)
-
                 # Sparingly use name on greetings and genuine encouragement
                 name = get_name(state)
                 message_lower = message.lower()
+
+                # Shorten replies if user is in idle/mirror mode
+                if state.get("device", {}).get("mode") == "idle":
+                    message = message + " (keep your reply brief, one or two sentences max)"
+
+                # Generate response via ChatHandler
+                reply = state["chat_handler"].generate_response(message, emotion, intent)
+
                 if name:
                     is_greeting = any(w in message_lower for w in ["hello", "hi", "hey", "good morning", "good evening"])
                     if is_greeting:
@@ -1064,6 +1075,15 @@ async def websocket_endpoint(websocket: WebSocket):
                     "intent":  "CHAT",
                     "turn_id": session["turn_id"]
                 }))
+                continue
+
+            # ── STATE UPDATE FROM FRONTEND ──
+            if payload.get("type") == "state_update":
+                new_mode = payload.get("mode")
+                if new_mode in ("active", "idle", "dozing"):
+                    session["device"]["mode"] = new_mode
+                    session["device"]["user_present"] = new_mode == "active"
+                    logger.info(f"Device state → mode={new_mode} | uid={uid[:8]}")
                 continue
 
             # ── VOICE PIPELINE: humanize + confidence filter ──
